@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import uuid
 from copy import deepcopy
 from datetime import datetime, timedelta
 from typing import List, Union
@@ -9,6 +10,14 @@ import numpy as np
 import pandas as pd
 
 from hydws.coordinates import CoordinateTransformer
+
+
+def is_valid_uuid(val):
+    try:
+        uuid.UUID(str(val))
+        return True
+    except ValueError:
+        return False
 
 
 class HYDWSParser:
@@ -93,11 +102,35 @@ class HYDWSParser:
         """ Returns a copy of the current borehole metadata. """
         return deepcopy(self.__metadata)
 
-    def load_hydraulics_dataframe(
-            self,
-            section_id: str,
-            dataframe: pd.DataFrame,
-            merge: bool = False) -> None:
+    def load_hydraulics_dataframe_by_name(self,
+                                          section_name: str,
+                                          dataframe: pd.DataFrame,
+                                          merge: bool = False) -> None:
+        """
+        Load hydraulic data for a section name from a dataframe.
+
+        If that section already contains data, then this data is being merged.
+        It is only possible to merge additional columns, not rows.
+
+        :param section_name:    Name of the section.
+        :param dataframe:       Df with a datetime index and column names
+                                according to the HYDWS field names.
+        :param merge:           If True, merge columns with existing data.
+        """
+
+        section = next((s for s in self.__metadata['sections'] if s['name']
+                        == section_name), None)
+
+        if not section:
+            raise KeyError(f'Section with name {section_name} needs '
+                           'to be in metadata in order to store by name.')
+
+        self.load_hydraulics_dataframe(section['publicid'], dataframe, merge)
+
+    def load_hydraulics_dataframe(self,
+                                  section_id: str,
+                                  dataframe: pd.DataFrame,
+                                  merge: bool = False) -> None:
         """
         Load hydraulic data for a section from a dataframe.
 
@@ -108,6 +141,8 @@ class HYDWSParser:
         :param dataframe:   Df with a datetime index and column names
                             according to the HYDWS field names.
         """
+        if not is_valid_uuid(section_id):
+            raise ValueError(f'PublicID {section_id} is not a valid UUID.')
 
         if not all(col in self.fields_hydraulics for col in dataframe.columns):
             raise KeyError(
@@ -134,10 +169,35 @@ class HYDWSParser:
                 self.data[section_id]['datetime'].dt.strftime(
                     '%Y-%m-%dT%H:%M:%S')
 
+    def load_hydraulics_json_by_name(self,
+                                     section_name: str,
+                                     json_data: pd.DataFrame,
+                                     merge: bool = False) -> None:
+        """
+        Load hydraulic data for a section from a json string or dictionary.
+
+        If that section already contains data, then this data is being merged.
+        It is only possible to merge additional columns, not rows.
+
+        :param section_name:    Name of the section.
+        :param dataframe:       Df with a datetime index and column names
+                                according to the HYDWS field names.
+        :param merge:           If True, merge columns with existing data.
+        """
+
+        section = next((s for s in self.__metadata['sections'] if s['name']
+                        == section_name), None)
+
+        if not section:
+            raise KeyError(f'Section with name {section_name} needs '
+                           'to be in metadata in order to store by name.')
+
+        self.load_hydraulics_json(section['publicid'], json_data, merge)
+
     def load_hydraulics_json(
             self,
             section_id: str,
-            json_data: dict,
+            json_data: list[dict],
             merge: bool = False) -> None:
         """
         Load hydraulic data from a json string or dictionary.
@@ -147,6 +207,9 @@ class HYDWSParser:
         :param section_id: PublicID of the section.
         :param json_data: Dict with hydraulic data in the format of HYDWS.
         """
+        if not is_valid_uuid(section_id):
+            raise ValueError(f'PublicID {section_id} is not a valid UUID.')
+
         dataframe = pd.json_normalize(json_data, sep='_')
 
         dataframe.columns = dataframe.columns.str.replace(
@@ -174,6 +237,25 @@ class HYDWSParser:
 
         self.set_metadata(borehole_json)
 
+    def get_hydraulics_dataframe_by_name(
+            self,
+            section_name: str,
+            date: datetime = datetime(1900, 1, 1)) -> pd.DataFrame:
+        """
+        Returns hydraulic data of a section as a dataframe.
+
+        :param section_name: Name of the section for which data is returned.
+        :param date: Date from which on the hydraulic data is returned.
+        """
+        section = next((s for s in self.__metadata['sections'] if s['name']
+                        == section_name), None)
+
+        if not section:
+            raise KeyError(f'Section with name {section_name} needs '
+                           'to be in metadata in order to store by name.')
+
+        return self.get_hydraulics_dataframe(section['publicid'], date)
+
     def get_hydraulics_dataframe(
             self,
             section_id: str,
@@ -184,11 +266,31 @@ class HYDWSParser:
         :param section_id: ID of the section for which data is returned.
         :param date: Date from which on the hydraulic data is returned.
         """
+
         if section_id in self.data:
             return self.data[
                 section_id][date + timedelta(0, 1):].drop('datetime', axis=1)
         else:
             raise KeyError(f'No data found for section {section_id}.')
+
+    def get_hydraulics_json_by_name(self, section_name: str,
+                                    date: datetime = datetime(1900, 1, 1)
+                                    ) -> list:
+        """
+        Returns hydraulic data of a section as a list of json/dict objects
+
+        :param section_name: Name of the section for which data is returned.
+        :param date: Date from which on the hydraulic data is returned.
+        """
+
+        section = next((s for s in self.__metadata['sections'] if s['name']
+                        == section_name), None)
+
+        if not section:
+            raise KeyError(f'Section with name {section_name} needs '
+                           'to be in metadata in order to store by name.')
+
+        return self.get_hydraulics_json(section['publicid'], date)
 
     def get_hydraulics_json(self, section_id: str,
                             date: datetime = datetime(1900, 1, 1)) -> list:
@@ -198,6 +300,7 @@ class HYDWSParser:
         :param section_id: ID of the section for which data is returned.
         :param date: Date from which on the hydraulic data is returned.
         """
+
         # retrieve dataframe for section
         df = self.data[section_id]
         df = df.loc[date + timedelta(0, 1):, :]
