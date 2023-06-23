@@ -30,9 +30,16 @@ def parse_geomonitor_to_dataframe(
 
     # check and convert datetime to index
     data.dropna(subset=['dd/mm/yyyy', 'hh:mm:ss'], inplace=True)
-    data['datetime'] = pd.to_datetime(
-        data['dd/mm/yyyy'].str.cat(data['hh:mm:ss'], sep=' '),
-        format='%d.%m.%Y %H:%M:%S')
+
+    try:
+        data['datetime'] = pd.to_datetime(
+            data['dd/mm/yyyy'].str.cat(data['hh:mm:ss'], sep=' '),
+            format='%d.%m.%Y %H:%M:%S')
+    except BaseException:
+        data['datetime'] = pd.to_datetime(
+            data['dd/mm/yyyy'].str.cat(data['hh:mm:ss'], sep=' '),
+            format='%d/%m/%Y %H:%M:%S')
+
     data.set_index(['datetime'], inplace=True)
     data.drop(['dd/mm/yyyy', 'hh:mm:ss'], axis=1, inplace=True)
 
