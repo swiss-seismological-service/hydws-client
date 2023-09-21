@@ -8,7 +8,6 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-
 from hydws.coordinates import CoordinateTransformer
 
 
@@ -360,18 +359,12 @@ def hydws_metadata_empty() -> dict:
     Creates dummy borehole data to use hydraulic data without metadata.
     """
     return {
-        'publicid': 'smi:ch.ethz.sed/bh/example',
+        'publicid': uuid.uuid4(),
         'longitude': create_value(0),
         'latitude': create_value(0),
         'altitude': create_value(0),
-        'bedrockaltitude': {},
-        'measureddepth': {},
-        'description': '',
-        'name': '',
         'sections': [{
-            'publicid': 'smi:ch.ethz.sed/bh/example/section',
-            'starttime': create_value(datetime.now() - timedelta(days=1)),
-            'endtime': create_value(datetime.now()),
+            'publicid': uuid.uuid4(),
             'toplongitude': create_value(0),
             'toplatitude': create_value(0),
             'topaltitude': create_value(0),
@@ -380,13 +373,6 @@ def hydws_metadata_empty() -> dict:
             'bottomaltitude': create_value(-1),
             'topclosed': True,
             'bottomclosed': True,
-            'topmeasureddepth': {},
-            'bottommeasureddepth': {},
-            'holediameter': {},
-            'casingdiameter': {},
-            'sectiontype': '',
-            'casingtype': '',
-            'description': '',
         }]}
 
 
