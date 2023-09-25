@@ -24,7 +24,7 @@ class HYDWSParser:
     Parses hydraulic data of a borehole between "dataframes" and "hydws-json".
     """
 
-    def __init__(self, metadata: dict = None) -> None:
+    def __init__(self, metadata: dict = None, sections: int = None) -> None:
         """
         :param metadata:    Dictionary with borehole and section metadata.
         """
@@ -66,7 +66,8 @@ class HYDWSParser:
         if metadata:
             self.set_metadata(metadata)
         else:
-            self.set_metadata(hydws_metadata_empty())
+            self.set_metadata(
+                create_borehole_metadata(num_sections=sections or 1))
 
     def set_metadata(self, metadata: dict) -> None:
         """
@@ -354,26 +355,28 @@ def create_value(value):
     return {'value': value}
 
 
-def hydws_metadata_empty() -> dict:
+def create_borehole_metadata(num_sections: int = 1) -> dict:
     """
     Creates dummy borehole data to use hydraulic data without metadata.
     """
+    sections = [{
+        'publicid': uuid.uuid4(),
+        'toplongitude': create_value(0),
+        'toplatitude': create_value(0),
+        'topaltitude': create_value(0),
+        'bottomlongitude': create_value(0),
+        'bottomlatitude': create_value(0),
+        'bottomaltitude': create_value(-1),
+        'topclosed': True,
+        'bottomclosed': True,
+    } for _ in range(num_sections)]
+
     return {
         'publicid': uuid.uuid4(),
         'longitude': create_value(0),
         'latitude': create_value(0),
         'altitude': create_value(0),
-        'sections': [{
-            'publicid': uuid.uuid4(),
-            'toplongitude': create_value(0),
-            'toplatitude': create_value(0),
-            'topaltitude': create_value(0),
-            'bottomlongitude': create_value(0),
-            'bottomlatitude': create_value(0),
-            'bottomaltitude': create_value(-1),
-            'topclosed': True,
-            'bottomclosed': True,
-        }]}
+        'sections': sections}
 
 
 def calculate_coords(d: float, trajectory: pd.DataFrame, cols: list) -> tuple:
