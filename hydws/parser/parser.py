@@ -8,6 +8,7 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
+
 from hydws.coordinates import CoordinateTransformer
 
 
@@ -19,7 +20,7 @@ def is_valid_uuid(val):
         return False
 
 
-class HYDWSParser:
+class HYDJSONParser:
     """
     Parses hydraulic data of a borehole between "dataframes" and "hydws-json".
     """
@@ -508,14 +509,14 @@ def hydws_metadata_from_configs(borehole_publicid: str,
     return borehole
 
 
-def load_hydraulics_from_file(path: str) -> HYDWSParser:
+def load_hydraulics_from_file(path: str) -> HYDJSONParser:
     """
     Loads hydraulic data from a file or a folder.
 
     :param data:
 
     """
-    hydws_parser = HYDWSParser()
+    hydws_parser = HYDJSONParser()
 
     if path.isfile(path):
         with open(path, 'r') as f:
@@ -689,7 +690,7 @@ class RawHydraulicsParser:
                     column, col_config['section'], borehole_data)
 
         if not borehole_data['publicid'] in boreholes:
-            boreholes[borehole_data['publicid']] = HYDWSParser(borehole_data)
+            boreholes[borehole_data['publicid']] = HYDJSONParser(borehole_data)
 
         # add hydraulic data to parser
         boreholes[borehole_data['publicid']].load_hydraulics_dataframe(
