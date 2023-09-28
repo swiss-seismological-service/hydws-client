@@ -1,3 +1,3 @@
 from .geomonitor import parse_geomonitor_to_dataframe  # noqa
-from .parser import (HYDJSONParser, create_borehole_metadata,  # noqa
-                     load_hydraulics_from_file)
+from .parser import HYDJSONParser  # noqa
+from .rawparser import RawHydraulicsParser  # noqa
