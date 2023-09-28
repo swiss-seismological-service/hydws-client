@@ -11,10 +11,7 @@
     },
     "bedrockaltitude": {},
     "measureddepth": {
-        "value": {
-            "value": "400.0n",
-            "type": "Big Number"
-        }
+        "value": 400
     },
     "name": "ST1",
     "location": "Bedretto",
