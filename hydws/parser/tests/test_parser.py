@@ -66,7 +66,7 @@ class TestSectionHydraulics:
 
     def test_load_hydraulic_dataframe(self, df):
         hydraulics = SectionHydraulics()
-        hydraulics.load_hydraulic_dataframe(df)
+        hydraulics.hydraulics = df
         pd.testing.assert_frame_equal(hydraulics.hydraulics, df)
 
     def test_load_hydraulic_json(self, hydjson, df):

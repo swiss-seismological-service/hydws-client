@@ -57,7 +57,7 @@ class SectionHydraulics:
 
         """
         self.metadata = empty_section_metadata()
-        self.hydraulics = None
+        self._hydraulics = None
 
         if hydjson:
             self._from_json(hydjson)
@@ -108,20 +108,17 @@ class SectionHydraulics:
         dataframe['datetime'] = pd.to_datetime(dataframe['datetime'])
         dataframe.set_index(['datetime'], inplace=True, drop=True)
 
-        self.load_hydraulic_dataframe(dataframe)
+        self.hydraulics = dataframe
 
-    def load_hydraulic_dataframe(self, data: pd.DataFrame):
-        """
-        Loads a dataframe of hydraulics into the object.
+    @property
+    def hydraulics(self):
+        return self._hydraulics
 
-        Parameters
-        ----------
-        data : pd.DataFrame
-            A dataframe containing the hydraulics of a section
-        """
+    @hydraulics.setter
+    def hydraulics(self, data: pd.DataFrame):
         self._validate_dataframe(data)
         data.sort_index(inplace=True)
-        self.hydraulics = data
+        self._hydraulics = data
 
     def to_json(self):
         """
@@ -189,15 +186,19 @@ class HYDJSONParser(MutableMapping):
     def add_emtpy_section(self):
         section = SectionHydraulics()
         self[section.metadata['publicid']] = section
+        return section.metadata['publicid']
 
     def section_from_json(self, data: dict):
         section = SectionHydraulics(data)
         self[section.metadata['publicid']] = section
+        return section.metadata['publicid']
 
     def section_from_dataframe(self, data: pd.DataFrame):
         section = SectionHydraulics()
-        section.load_hydraulic_dataframe(data)
+        section.hydraulics = data
         self[section.metadata['publicid']] = section
+
+        return section.metadata['publicid']
 
     def __getitem__(self, key):
         return self.__sections[key]
