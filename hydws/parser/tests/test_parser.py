@@ -5,7 +5,7 @@ from copy import deepcopy
 import pandas as pd
 import pytest
 
-from hydws.parser.parser import (HYDJSONParser, SectionHydraulics,
+from hydws.parser.parser import (BoreholeHydraulics, SectionHydraulics,
                                  empty_section_metadata, is_valid_uuid)
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
@@ -30,10 +30,10 @@ def metadata(hydjson):
     return metadata
 
 
-class TestHYDJSONParser:
+class TestBoreholeHydraulics:
     def test_init(self, hydjson, df):
 
-        parser = HYDJSONParser(hydjson)
+        parser = BoreholeHydraulics(hydjson)
 
         hydjson['sections'][1].pop('hydraulics')
         hydraulics_id = hydjson['sections'][1]['publicid']
@@ -50,7 +50,7 @@ class TestHYDJSONParser:
             assert parser[key] == value
 
     def test_to_json(self, hydjson):
-        parser = HYDJSONParser(hydjson)
+        parser = BoreholeHydraulics(hydjson)
         borehole_json = parser.to_json()
         assert borehole_json == hydjson
 

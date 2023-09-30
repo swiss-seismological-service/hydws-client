@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from hydws.coordinates import CoordinateTransformer
-from hydws.parser import HYDJSONParser
+from hydws.parser import BoreholeHydraulics
 
 
 def calculate_coords(d: float, trajectory: pd.DataFrame, cols: list) -> tuple:
@@ -288,7 +288,8 @@ class RawHydraulicsParser:
                     column, col_config['section'], borehole_data)
 
         if not borehole_data['publicid'] in boreholes:
-            boreholes[borehole_data['publicid']] = HYDJSONParser(borehole_data)
+            boreholes[borehole_data['publicid']
+                      ] = BoreholeHydraulics(borehole_data)
 
         # add hydraulic data to parser
         boreholes[borehole_data['publicid']].load_hydraulics_dataframe(

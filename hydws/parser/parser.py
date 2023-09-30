@@ -156,7 +156,7 @@ class SectionHydraulics:
                 f' of {hydraulic_fields}.')
 
 
-class HYDJSONParser(MutableMapping):
+class BoreholeHydraulics(MutableMapping):
     """
     Parses hydraulic data of a borehole between "dataframes" and "hydws-json".
     """
