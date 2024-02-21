@@ -17,6 +17,15 @@ def is_valid_uuid(val):
         return False
 
 
+def as_uuid(val):
+    if isinstance(val, uuid.UUID):
+        return val
+    elif isinstance(val, str) and is_valid_uuid(val):
+        return uuid.UUID(val)
+    else:
+        return uuid.UUID(val)
+
+
 def create_value(value):
     return {'value': value}
 
@@ -201,18 +210,19 @@ class BoreholeHydraulics(MutableMapping):
         return section.metadata['publicid']
 
     def __getitem__(self, key):
-        return self.__sections[key]
+        return self.__sections[as_uuid(key)]
 
     def __setitem__(self, key, value):
         if isinstance(value, SectionHydraulics):
-            self.__sections[key] = value
+            self.__sections[as_uuid(key)] = value
             if 'name' in value.metadata:
-                self.nloc[value.metadata['name']] = self.__sections[key]
+                self.nloc[value.metadata['name']
+                          ] = self.__sections[as_uuid(key)]
 
     def __delitem__(self, key):
-        if 'name' in self.__sections[key].metadata:
-            del self.nloc[self.__sections[key].metadata['name']]
-        del self.__sections[key]
+        if 'name' in self.__sections[as_uuid(key)].metadata:
+            del self.nloc[self.__sections[as_uuid(key)].metadata['name']]
+        del self.__sections[as_uuid(key)]
 
     def __iter__(self):
         return iter(self.__sections)
