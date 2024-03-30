@@ -38,7 +38,7 @@ def calculate_coords(d: float, trajectory: pd.DataFrame, cols: list) -> tuple:
     return x, y, z
 
 
-def hydws_metadata_from_configs(borehole_publicid: str,
+def hydws_metadata_from_configs(borehole_name: str,
                                 origin: list,
                                 local_crs: str,
                                 boreholes_path: str,
@@ -61,7 +61,7 @@ def hydws_metadata_from_configs(borehole_publicid: str,
     sections_csv = pd.read_csv(sections_path)
 
     boreholes_csv = boreholes_csv.loc[
-        boreholes_csv['publicid'] == borehole_publicid]
+        boreholes_csv['name'] == borehole_name]
 
     not_real_quantities = [
         'publicid',
@@ -92,7 +92,7 @@ def hydws_metadata_from_configs(borehole_publicid: str,
                 for m in boreholes_csv.to_dict(orient='records')][0]
 
     section_df = sections_csv.loc[sections_csv['borehole']
-                                  == borehole_publicid]
+                                  == borehole_name]
     if not section_df.empty:
         # get the correct trajectory
         trajectory = pd.read_csv(trajectory_path, index_col=0)
@@ -165,7 +165,7 @@ class RawHydraulicsParser:
                           'sectionID': self._assign_to_section}
 
         for _, row in pd.read_csv(boreholes_path).iterrows():
-            metadata = hydws_metadata_from_configs(row['publicid'],
+            metadata = hydws_metadata_from_configs(row['name'],
                                                    origin,
                                                    local_crs,
                                                    boreholes_path,
@@ -173,8 +173,8 @@ class RawHydraulicsParser:
                                                    trajectories[row['name']])
             if 'sections' in metadata:
                 for s in metadata['sections']:
-                    self.name_map[s['name']] = s['publicid']
-                    self.sections_map[s['publicid']] = metadata
+                    self.name_map[s['name']] = s['name']
+                    self.sections_map[s['name']] = metadata
 
     def parse(self, data: pd.DataFrame, format='json') -> list | dict:
         """

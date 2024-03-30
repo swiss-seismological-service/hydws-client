@@ -33,6 +33,7 @@ def create_value(value):
 def empty_section_metadata():
     return {
         'publicid': uuid.uuid4(),
+        'name': 'Unnamed Section',
         'toplongitude': create_value(0),
         'toplatitude': create_value(0),
         'topaltitude': create_value(0),
@@ -47,6 +48,7 @@ def empty_section_metadata():
 def empty_borehole_metadata():
     return {
         'publicid': uuid.uuid4(),
+        'name': 'Unnamed Borehole',
         'longitude': create_value(0),
         'latitude': create_value(0),
         'altitude': create_value(0)
