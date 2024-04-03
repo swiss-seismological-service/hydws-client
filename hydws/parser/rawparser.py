@@ -4,7 +4,6 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-
 from hydws.coordinates import CoordinateTransformer
 from hydws.parser import BoreholeHydraulics
 
@@ -39,11 +38,10 @@ def calculate_coords(d: float, trajectory: pd.DataFrame, cols: list) -> tuple:
 
 
 def hydws_metadata_from_configs(borehole_name: str,
-                                origin: list,
-                                local_crs: str,
                                 boreholes_path: str,
                                 sections_path: str,
-                                trajectory_path: str) -> dict:
+                                origin: list[float] = [0, 0, 0],
+                                local_crs: str = 'EPSG:4326') -> dict:
     """
     Calculate borehole metadata in json format from raw csv files.
 
@@ -92,33 +90,8 @@ def hydws_metadata_from_configs(borehole_name: str,
                 for m in boreholes_csv.to_dict(orient='records')][0]
 
     section_df = sections_csv.loc[sections_csv['borehole']
-                                  == borehole_name]
+                                  == borehole_name].copy()
     if not section_df.empty:
-        # get the correct trajectory
-        trajectory = pd.read_csv(trajectory_path, index_col=0)
-
-        # coordinate calculations need to be done for top and bottom
-        for field in ['top', 'bottom']:
-            # calculate coordinates from measureddepth
-            coordinates = section_df[f'{field}measureddepth'] \
-                .apply(calculate_coords,
-                       args=(trajectory, ['depth', 'x', 'y', 'z'],)) \
-                .apply(pd.Series)
-
-            # transform into wgs84
-            coordinates = pd.DataFrame(transformer.from_local_coords(
-                coordinates[0], coordinates[1], coordinates[2])).T
-
-            # update dataframe axes
-            coordinates.columns = [
-                f'{field}longitude',
-                f'{field}latitude',
-                f'{field}altitude']
-            coordinates.index = section_df.index
-
-            # append to group
-            section_df = pd.concat([section_df, coordinates], axis=1)
-
         # create value dict from columns
         for col in section_df.columns:
             if col not in not_real_quantities:
@@ -138,15 +111,41 @@ def hydws_metadata_from_configs(borehole_name: str,
     return borehole
 
 
+def calculate_section_trajectories(
+        borehole: dict,
+        trajectory_path: str,
+        origin: list[float] = [0, 0, 0],
+        local_crs: str = 'EPSG:4326',
+) -> dict:
+
+    # get the correct trajectory
+    trajectory = pd.read_csv(trajectory_path, index_col=0)
+
+    # coordinate calculations need to be done for top and bottom
+    for field in ['top', 'bottom']:
+        for section in borehole['sections']:
+            coordinates = \
+                calculate_coords(section[f'{field}measureddepth']['value'],
+                                 trajectory,
+                                 ['depth', 'x', 'y', 'z'])
+
+            transformer = CoordinateTransformer(
+                local_crs, origin[0], origin[1])
+            coordinates = transformer.from_local_coords(
+                coordinates[0], coordinates[1], coordinates[2])
+
+            section[f'{field}longitude'] = {'value': coordinates[0]}
+            section[f'{field}latitude'] = {'value': coordinates[1]}
+            section[f'{field}altitude'] = {'value': coordinates[2]}
+
+    return borehole
+
+
 class RawHydraulicsParser:
 
     def __init__(self,
                  config_path: str,
-                 origin: list,
-                 local_crs: str,
-                 boreholes_path: str,
-                 sections_path: str,
-                 trajectories: dict):
+                 boreholes_metadata: list[dict]):
         """
         This class Parses data from a dataframe to HYDWS format. Uses
         transformations and mappings which are defined in a config file.
@@ -164,17 +163,11 @@ class RawHydraulicsParser:
         self.assign_to = {'plan': self._assign_to_plan,
                           'sectionID': self._assign_to_section}
 
-        for _, row in pd.read_csv(boreholes_path).iterrows():
-            metadata = hydws_metadata_from_configs(row['name'],
-                                                   origin,
-                                                   local_crs,
-                                                   boreholes_path,
-                                                   sections_path,
-                                                   trajectories[row['name']])
-            if 'sections' in metadata:
-                for s in metadata['sections']:
-                    self.name_map[s['name']] = s['name']
-                    self.sections_map[s['name']] = metadata
+        for borehole in boreholes_metadata:
+            if 'sections' in borehole:
+                for s in borehole['sections']:
+                    self.name_map[s['name']] = s['publicid']
+                    self.sections_map[s['name']] = borehole
 
     def parse(self, data: pd.DataFrame, format='json') -> list | dict:
         """
@@ -213,7 +206,7 @@ class RawHydraulicsParser:
                 boreholes, col_config, selection)
 
         if format == 'json':
-            return [b.get_borehole_json() for b in boreholes.values()]
+            return [b.to_json() for b in boreholes.values()]
         elif format == 'hydwsparser':
             return boreholes
         else:
@@ -274,7 +267,7 @@ class RawHydraulicsParser:
     def _assign_to_section(
             self, boreholes: dict, col_config: dict, column: pd.DataFrame):
 
-        borehole_data = self.sections_map[self.name_map[col_config['section']]]
+        borehole_data = self.sections_map[col_config['section']]
 
         if 'unitConversion' in col_config:
             column = self._convert_unit(
@@ -292,8 +285,10 @@ class RawHydraulicsParser:
                       ] = BoreholeHydraulics(borehole_data)
 
         # add hydraulic data to parser
-        boreholes[borehole_data['publicid']].load_hydraulics_dataframe(
-            self.name_map[col_config['section']], column, merge=True)
+        # boreholes[borehole_data['publicid']].load_hydraulics_dataframe(
+        #     self.name_map[col_config['section']], column, merge=True)
+        boreholes[borehole_data['publicid']
+                  ][self.name_map[col_config['section']]].hydraulics = column
 
     def _convert_unit(self, column: pd.DataFrame, operation: str, num: float):
         return getattr(column, operation)(num)

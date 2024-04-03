@@ -79,6 +79,7 @@ class CoordinateTransformer:
         :param altitude: altitude
         :returns: longitude, latitude, altitude in local CRS relative to ref.
         """
+
         easting_0 = np.array(easting) + self.ref_easting
         northing_0 = np.array(northing) + self.ref_northing
 
