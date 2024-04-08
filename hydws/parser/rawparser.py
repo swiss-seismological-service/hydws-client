@@ -285,10 +285,12 @@ class RawHydraulicsParser:
                       ] = BoreholeHydraulics(borehole_data)
 
         # add hydraulic data to parser
-        # boreholes[borehole_data['publicid']].load_hydraulics_dataframe(
-        #     self.name_map[col_config['section']], column, merge=True)
         boreholes[borehole_data['publicid']
-                  ][self.name_map[col_config['section']]].hydraulics = column
+                  ][self.name_map[col_config['section']]].hydraulics = \
+            pd.concat([
+                boreholes[borehole_data['publicid']
+                          ][self.name_map[col_config['section']]].hydraulics, column],
+                      axis=1)
 
     def _convert_unit(self, column: pd.DataFrame, operation: str, num: float):
         return getattr(column, operation)(num)
