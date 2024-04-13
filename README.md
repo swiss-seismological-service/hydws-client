@@ -28,7 +28,11 @@ hydws_url = 'http://scforge.ethz.ch:8081/hydws/v1'
 hydws = HYDWSDataSource(hydws_url)
 ```
 
-Assuming you know exactly what you want, you can use the following methods to get the data you need. Throughout, you can usually use the name and the id interchangeably. Let's assume we have the borehole id, and the section name.
+Assuming you know exactly what you want, you can use the following methods to get the data you need. 
+
+>**Throughout, you can usually use the name and the id interchangeably.** 
+
+Let's assume we have the borehole id, and the section name.
 
 
 ```python
@@ -50,19 +54,6 @@ hydraulics
 
 
 <div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -139,6 +130,8 @@ hydraulics
 
 
 
+### Boreholes and Sections
+
 Otherwise, if you want the metadata, or need to parse a file containing `hydws`, or prefer an object with the borehole and/or section structure, you can use the hydws client together with `BoreholeHydraulics` and `SectionHydraulics` classes:
 
 If you just want to consider one Section, it's easiest to directly use the `SectionHydraulics` class:
@@ -157,19 +150,6 @@ section.hydraulics # to access the hydraulic data as a dataframe
 
 
 <div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
