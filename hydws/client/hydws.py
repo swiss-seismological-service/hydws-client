@@ -36,13 +36,18 @@ class HYDWSDataSource:
         """
         return self.metadata
 
-    def list_borehole_names(self) -> list[tuple[str, str]]:
+    def list_borehole_names(self, identifier: str = 'name') \
+            -> list[tuple[str, str]] | list[str]:
         """
         Returns a list of all borehole names and id's.
+        :param identifier: 'name', 'publicid' or 'both'.
 
         :returns: List of tuples with borehole name and id.
         """
-        return [(bh['name'], bh['publicid']) for bh in self.metadata]
+        if identifier == 'both':
+            return [(bh['name'], bh['publicid']) for bh in self.metadata]
+        else:
+            return [bh[identifier] for bh in self.metadata]
 
     def get_borehole_metadata(self, borehole: str) -> dict:
         """
@@ -71,6 +76,8 @@ class HYDWSDataSource:
         Returns a list of all sections for a given borehole.
 
         :param borehole_name: PublicID or name of the borehole.
+        :param identifier:    'name', 'publicid' or 'both'.
+
         :returns:             List of sections for the borehole.
         """
 
@@ -78,7 +85,8 @@ class HYDWSDataSource:
 
         return borehole_metadata['sections']
 
-    def list_section_names(self, borehole: str) -> list[tuple[str, str]]:
+    def list_section_names(self, borehole: str, identifier: str = 'name') \
+            -> list[tuple[str, str] | list[str]]:
         """
         Returns a list of all section names and id's for a given borehole.
 
@@ -88,8 +96,11 @@ class HYDWSDataSource:
 
         borehole_metadata = self.get_borehole_metadata(borehole)
 
-        return [(sc['name'], sc['publicid'])
-                for sc in borehole_metadata['sections']]
+        if identifier == 'both':
+            return [(sc['name'], sc['publicid'])
+                    for sc in borehole_metadata['sections']]
+        else:
+            return [sc[identifier] for sc in borehole_metadata['sections']]
 
     def get_section_metadata(self, borehole: str, section: str) -> dict:
         """
