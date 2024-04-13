@@ -40,7 +40,7 @@ class TestBoreholeHydraulics:
         section_json = hydjson.pop('sections')[0]
         section_json.pop('hydraulics')
 
-        assert parser.borehole == hydjson
+        assert parser.metadata == hydjson
         pd.testing.assert_frame_equal(parser[hydraulics_id].hydraulics, df)
 
         assert parser[section_json['publicid']].metadata == section_json

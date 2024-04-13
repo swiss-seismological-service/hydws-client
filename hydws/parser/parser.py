@@ -95,7 +95,8 @@ class SectionHydraulics:
 
         self.metadata = data
 
-    def load_hydraulic_json(self, data: list[dict]):
+    @classmethod
+    def _load_hydraulic_json(cls, data: list[dict]):
         """
         Loads hydws-json of hydraulics into the object.
 
@@ -103,10 +104,14 @@ class SectionHydraulics:
         ----------
         data : dict
             A dictionary containing the hydws-json of hydraulics
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe containing the hydraulic data
         """
         if data is None or len(data) == 0:
-            self.hydraulics = pd.DataFrame()
-            return
+            return pd.DataFrame()
 
         for el in data:
             HydraulicSampleSchema.model_validate(el)
@@ -119,7 +124,18 @@ class SectionHydraulics:
         dataframe['datetime'] = pd.to_datetime(dataframe['datetime'])
         dataframe.set_index(['datetime'], inplace=True, drop=True)
 
-        self.hydraulics = dataframe
+        return dataframe
+
+    def load_hydraulic_json(self, data: list[dict]):
+        """
+        Loads hydws-json of hydraulics into the object.
+
+        Parameters
+        ----------
+        data : dict
+            A dictionary containing the hydws-json of hydraulics
+        """
+        self.hydraulics = self._load_hydraulic_json(data)
 
     @property
     def hydraulics(self):
@@ -176,11 +192,11 @@ class BoreholeHydraulics(MutableMapping):
 
         self.logger = logging.getLogger(__name__)
         self.__sections = {}
-        self.borehole = {}
+        self.metadata = {}
         self.nloc = {}
 
         if hydjson is None:
-            self.borehole = empty_borehole_metadata()
+            self.metadata = empty_borehole_metadata()
         else:
             self._from_json(hydjson)
 
@@ -188,7 +204,7 @@ class BoreholeHydraulics(MutableMapping):
         data = deepcopy(data)
         sections = data.pop('sections')
         BoreholeSchema.model_validate(data)
-        self.borehole = data
+        self.metadata = data
 
         for section_json in sections:
             section = SectionHydraulics(section_json)
@@ -242,7 +258,7 @@ class BoreholeHydraulics(MutableMapping):
         """
         Returns hydraulic data of a borehole as a json/dict object
         """
-        hydjson = deepcopy(self.borehole)
+        hydjson = deepcopy(self.metadata)
         hydjson['sections'] = [section.to_json()
                                for section in self.__sections.values()]
         return hydjson
