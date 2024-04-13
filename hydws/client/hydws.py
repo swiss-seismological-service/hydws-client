@@ -3,9 +3,11 @@ import logging
 import uuid
 from datetime import datetime
 
+import pandas as pd
 import requests
 
 from hydws import NoContent, RequestsError, make_request
+from hydws.parser import SectionHydraulics
 
 
 class HYDWSDataSource:
@@ -167,7 +169,8 @@ class HYDWSDataSource:
     def get_section_hydraulics(self, borehole: str,
                                section: str,
                                starttime: datetime,
-                               endtime: datetime = datetime.now()) -> list:
+                               endtime: datetime = datetime.now(),
+                               format: str = 'json') -> list:
         """
         Get section hydraulics without any metadata.
 
@@ -175,6 +178,7 @@ class HYDWSDataSource:
         :param section:     PublicID or name of the section.
         :param starttime:   Datetime from when on the data should be retrieved.
         :param endtime:     Datetime until when the data should be retrieved.
+        :param format:      Format of the returned data, 'json' or 'pandas'.
 
         :returns: List of hydraulic samples for the specified parameters.
         """
@@ -194,6 +198,11 @@ class HYDWSDataSource:
             f'sections/{section_id}/hydraulics'
 
         hydraulics = self._make_api_request(request_url, params)
+
+        if format == 'pandas':
+            if not hydraulics:
+                return pd.DataFrame()
+            return SectionHydraulics._load_hydraulic_json(hydraulics)
 
         if not hydraulics:
             return []
