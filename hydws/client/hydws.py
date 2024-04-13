@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from datetime import datetime
 
 import requests
@@ -25,42 +26,109 @@ class HYDWSDataSource:
         self._timeout = timeout
         self.logger = logging.getLogger(__name__)
 
+        self.metadata = self._make_api_request(f'{self.url}/boreholes')
+
     def list_boreholes(self) -> list:
         """
         Returns a list of all boreholes including their metadata and sections.
         """
-        request_url = '{}/boreholes'.format(self.url)
-        return self._make_api_request(request_url)
+        return self.metadata
 
-    def get_borehole_metadata(self, borehole_id: str) -> dict:
+    def list_borehole_names(self) -> list[tuple[str, str]]:
+        """
+        Returns a list of all borehole names and id's.
+
+        :returns: List of tuples with borehole name and id.
+        """
+        return [(bh['name'], bh['publicid']) for bh in self.metadata]
+
+    def get_borehole_metadata(self, borehole: str) -> dict:
         """
         Returns borehole and section metadata as a dict.
 
-        :param borehole_id: PublicID of the borehole.
-        :returns:           Borehole data as a dict
+        :param borehole_id: PublicID or name of the borehole.
+        :returns:           Borehole data as a dict.
         """
 
-        request_url = f'{self.url}/boreholes/{borehole_id}'
+        try:
+            uuid.UUID(borehole)
+            key = 'publicid'
+        except ValueError:
+            key = 'name'
 
-        metadata = self._make_api_request(request_url)
+        borehole_metadata = next(
+            (bh for bh in self.metadata if bh[key] == borehole), None)
 
-        return metadata
+        if not borehole_metadata:
+            raise KeyError(f'Borehole {borehole} could not be found.')
 
-    def get_borehole(self, borehole_id: str,
+        return borehole_metadata
+
+    def list_sections(self, borehole: str) -> list:
+        """
+        Returns a list of all sections for a given borehole.
+
+        :param borehole_name: PublicID or name of the borehole.
+        :returns:             List of sections for the borehole.
+        """
+
+        borehole_metadata = self.get_borehole_metadata(borehole)
+
+        return borehole_metadata['sections']
+
+    def list_section_names(self, borehole: str) -> list[tuple[str, str]]:
+        """
+        Returns a list of all section names and id's for a given borehole.
+
+        :param borehole_name: PublicID or name of the borehole.
+        :returns:             List of tuples with section name and id.
+        """
+
+        borehole_metadata = self.get_borehole_metadata(borehole)
+
+        return [(sc['name'], sc['publicid'])
+                for sc in borehole_metadata['sections']]
+
+    def get_section_metadata(self, borehole: str, section: str) -> dict:
+        """
+        Returns metadata for a given section.
+
+        :param borehole: PublicID or name of the borehole.
+        :param section:  PublicID or name of the section.
+        :returns:        Metadata for the section.
+        """
+
+        borehole_metadata = self.get_borehole_metadata(borehole)
+
+        try:
+            uuid.UUID(section)
+            key = 'publicid'
+        except ValueError:
+            key = 'name'
+
+        section_metadata = next(
+            (sc for sc in borehole_metadata['sections']
+             if sc[key] == section), None)
+
+        if not section_metadata:
+            raise KeyError(f'Section {section} could not be found.')
+
+        return section_metadata
+
+    def get_borehole(self, borehole: str,
                      starttime: datetime = datetime(1990, 1, 1),
                      endtime: datetime = datetime.now()) -> dict:
         """
-        NOT WORKING YET
-
         Returns borehole with all the sections and associated hydraulic data.
 
-        :param borehole_id: PublicID of the borehole.
+        :param borehole_id: PublicID or name of the borehole.
         :param starttime:   Datetime from when on the data should be retrieved.
         :param endtime:     Datetime until when the data should be retrieved.
 
         :returns: Borehole and section metadata as well as section hydraulics.
         """
-        return NotImplementedError
+        borehole_id = self._get_borehole_id(borehole)
+
         request_url = f'{self.url}/boreholes/{borehole_id}'
 
         params = {
@@ -72,77 +140,46 @@ class HYDWSDataSource:
 
         return metadata
 
-    def get_section(self, borehole_id: str,
-                    section_id: str,
+    def get_section(self, borehole: str,
+                    section: str,
                     starttime: datetime,
                     endtime: datetime = datetime.now()) -> dict:
         """
-        Returns borehole and section data including hydraulics.
+        Returns Section data including hydraulics.
 
-        :param borehole_id: PublicID of the borehole.
-        :param section_id:  PublicID of the section.
+        :param borehole_id: PublicID or name of the borehole.
+        :param section_id:  PublicID or name of the section.
         :param starttime:   Datetime from when on the data should be retrieved.
         :param endtime:     Datetime until when the data should be retrieved.
 
-        :returns: Borehole and section metadata as well as section hydraulics.
+        :returns: Section metadata as well as section hydraulics.
         """
+        borehole_id = self._get_borehole_id(borehole)
+        section_id = self._get_section_id(borehole_id, section)
 
-        hydraulics = self.get_section_hydraulics(
+        section_metadata = self.get_section_metadata(borehole_id, section_id)
+        section_hydraulics = self.get_section_hydraulics(
             borehole_id, section_id, starttime, endtime)
 
-        request_url = f'{self.url}/boreholes/{borehole_id}'
+        section_metadata['hydraulics'] = section_hydraulics
+        return section_metadata
 
-        metadata = self._make_api_request(request_url, {'level': 'section'})
-
-        metadata['sections'] = [section for section in metadata['sections']
-                                if section['publicid'] == section_id]
-
-        if not metadata['sections']:
-            raise KeyError(f'Section {section_id} could not be found in '
-                           'borehole {borehole_id}')
-
-        metadata['sections'][0]['hydraulics'] = hydraulics
-        return metadata
-
-    def get_section_by_name(
-            self,
-            borehole_name: str,
-            section_name: str,
-            starttime: datetime,
-            endtime: datetime = datetime.now()) -> dict:
-        """
-        Returns borehole and section data including hydraulics.
-
-        :param borehole_name: Name of the borehole.
-        :param section_name:  Name of the section.
-        :param starttime:     Datetime from when the data should be retrieved.
-        :param endtime:       Datetime until when the data should be retrieved.
-
-        :returns: Borehole and section metadata as well as section hydraulics.
-        """
-        metadata = self.list_boreholes()
-        borehole = next((borehole for borehole in metadata if borehole['name']
-                         == borehole_name), None)
-        section = next(
-            (section for section in borehole['sections'] if section['name']
-             == section_name), None)
-        return self.get_section(
-            borehole['publicid'], section['publicid'], starttime, endtime)
-
-    def get_section_hydraulics(self, borehole_id: str,
-                               section_id: str,
+    def get_section_hydraulics(self, borehole: str,
+                               section: str,
                                starttime: datetime,
                                endtime: datetime = datetime.now()) -> list:
         """
         Get section hydraulics without any metadata.
 
-        :param borehole:    PublicID of the borehole.
-        :param section:     PublicID of the section.
+        :param borehole:    PublicID or name of the borehole.
+        :param section:     PublicID or name of the section.
         :param starttime:   Datetime from when on the data should be retrieved.
         :param endtime:     Datetime until when the data should be retrieved.
 
         :returns: List of hydraulic samples for the specified parameters.
         """
+        borehole_id = self._get_borehole_id(borehole)
+        section_id = self._get_section_id(borehole_id, section)
 
         params = {
             'starttime': starttime.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -156,32 +193,54 @@ class HYDWSDataSource:
             f'{self.url}/boreholes/{borehole_id}/' \
             f'sections/{section_id}/hydraulics'
 
-        return self._make_api_request(request_url, params)
+        hydraulics = self._make_api_request(request_url, params)
 
-    def get_section_hydraulics_by_name(self,
-                                       borehole_name: str,
-                                       section_name: str,
-                                       starttime: datetime,
-                                       endtime: datetime = datetime.now()
-                                       ) -> list:
+        if not hydraulics:
+            return []
+
+        return hydraulics
+
+    def _get_borehole_id(self, borehole_name: str) -> str:
         """
-        Get section hydraulics without any metadata.
-
-        :param borehole_name: Name of the borehole.
-        :param section_name:  Name of the section.
-        :param starttime:     Datetime from when the data should be retrieved.
-        :param endtime:       Datetime until when the data should be retrieved.
-
-        :returns: List of hydraulic samples for the specified parameters.
+        Get the borehole ID by its name.
         """
-        metadata = self.list_boreholes()
-        borehole = next((borehole for borehole in metadata if borehole['name']
-                         == borehole_name), None)
+        # check whether it is a valid UUID
+        try:
+            uuid.UUID(borehole_name)
+            return borehole_name
+        except ValueError:
+            pass
+
+        # if not, get the borehole ID by its name
+        borehole = next(
+            (bh for bh in self.metadata if bh['name'] == borehole_name), None)
+
+        if not borehole:
+            raise KeyError(f'Borehole {borehole_name} could not be found.')
+
+        return borehole['publicid']
+
+    def _get_section_id(self, borehole_id: str, section_name: str) -> str:
+        """
+        Get the section ID by its name.
+        """
+        # check whether it is a valid UUID
+        try:
+            uuid.UUID(section_name)
+            return section_name
+        except ValueError:
+            pass
+
+        # if not, get the section ID by its name
+        borehole_metadata = self.get_borehole_metadata(borehole_id)
         section = next(
-            (section for section in borehole['sections'] if section['name']
-                == section_name), None)
-        return self.get_section_hydraulics(
-            borehole['publicid'], section['publicid'], starttime, endtime)
+            (section for section in borehole_metadata['sections']
+             if section['name'] == section_name), None)
+
+        if not section:
+            raise KeyError(f'Section {section_name} could not be found.')
+
+        return section['publicid']
 
     def _make_api_request(self, request_url: str, params: dict = {}):
         try:
