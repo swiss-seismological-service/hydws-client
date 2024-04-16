@@ -43,15 +43,15 @@ def hydws_metadata_from_configs(borehole_name: str,
                                 origin: list[float] = [0, 0, 0],
                                 local_crs: str = 'EPSG:4326') -> dict:
     """
-    Calculate borehole metadata in json format from raw csv files.
+    Create borehole metadata in json format from raw csv files.
 
-    :param origin: origin of coordinates in csv files, Easting, Northing, Elev.
-    :param local_crs: CRS of coordinates in csv files.
-    :param boreholes_path: path of csv with borehole information.
-    :param sections_path: path of csv with sections information.
-    :param trajectories_folder: Path of folder to trajectory files.
-                Required column names are: 'depth', 'x', 'y', 'z'. Naming
-                convention of files 'trajectory_{borehole}.csv'
+    :param borehole_name:   name of borehole for which metadata is requested.
+    :param boreholes_path:  path of csv with borehole information.
+                            Required columns: name, publicid, x, y, z
+    :param sections_path:   path of csv with sections information.
+                            Required columns: borehole(name), name, publicid
+    :param origin:          origin of coordinates in csv files (ENU).
+    :param local_crs:       CRS of coordinates or, if used, origin point.
     """
 
     # read configs
@@ -67,6 +67,7 @@ def hydws_metadata_from_configs(borehole_name: str,
         'bottomclosed',
         'description',
         'name',
+        'borehole_name',
         'location',
         'institution']
 
@@ -89,7 +90,7 @@ def hydws_metadata_from_configs(borehole_name: str,
     borehole = [{k: v for k, v in m.items() if pd.notnull(v)}
                 for m in boreholes_csv.to_dict(orient='records')][0]
 
-    section_df = sections_csv.loc[sections_csv['borehole']
+    section_df = sections_csv.loc[sections_csv['borehole_name']
                                   == borehole_name].copy()
     if not section_df.empty:
         # create value dict from columns
@@ -100,7 +101,7 @@ def hydws_metadata_from_configs(borehole_name: str,
 
         # convert to array of dicts
         sections = [{k: v for k, v in m.items() if pd.notnull(v)}
-                    for m in section_df.drop(columns=['borehole']
+                    for m in section_df.drop(columns=['borehole_name']
                                              ).to_dict(orient='records')]
     else:
         sections = []
@@ -111,13 +112,23 @@ def hydws_metadata_from_configs(borehole_name: str,
     return borehole
 
 
-def calculate_section_trajectories(
-        borehole: dict,
-        trajectory_path: str,
-        origin: list[float] = [0, 0, 0],
-        local_crs: str = 'EPSG:4326',
-) -> dict:
+def calculate_section_trajectories(borehole: dict,
+                                   trajectory_path: str,
+                                   origin: list[float] = [0, 0, 0],
+                                   local_crs: str = 'EPSG:4326',
+                                   ) -> dict:
+    """
+    Extend a borehole metadata dictionary with section trajectories.
 
+    Requires the section information in the borehole dictionary to contain
+    topmeasureddepth and bottommeasureddepth information.
+
+    :param borehole:        borehole metadata dictionary
+    :param trajectory_path: path to csv with trajectory information.
+                            Required columns: depth, x, y, z
+    :param origin:          origin of coordinates in csv files (ENU).
+    :param local_crs:       CRS of coordinates or, if used, origin point.
+    """
     # get the correct trajectory
     trajectory = pd.read_csv(trajectory_path, index_col=0)
 
@@ -152,6 +163,7 @@ class RawHydraulicsParser:
 
         :param config_path: Path to config file. If not provided it looks for
                             'CONFIG_PATH' environment variable.
+        :param boreholes_metadata: List of dictionaries with borehole metadata.
         """
         self.logger = logging.getLogger(__name__)
 
@@ -289,7 +301,8 @@ class RawHydraulicsParser:
                   ][self.name_map[col_config['section']]].hydraulics = \
             pd.concat([
                 boreholes[borehole_data['publicid']
-                          ][self.name_map[col_config['section']]].hydraulics, column],
+                          ][self.name_map[col_config['section']]
+                            ].hydraulics, column],
                       axis=1)
 
     def _convert_unit(self, column: pd.DataFrame, operation: str, num: float):
