@@ -2,6 +2,7 @@ import logging
 import uuid
 from collections.abc import MutableMapping
 from copy import deepcopy
+from datetime import datetime
 
 import pandas as pd
 
@@ -137,6 +138,18 @@ class SectionHydraulics:
         """
         self.hydraulics = self._load_hydraulic_json(data)
 
+    def query_datetime(self,
+                       starttime: datetime | None = None,
+                       endtime: datetime | None = None):
+
+        obj = deepcopy(self)
+        obj.hydraulics = obj.hydraulics.loc[
+            (obj.hydraulics.index >= starttime if starttime else True)
+            & (obj.hydraulics.index <= endtime if endtime else True)
+        ]
+
+        return obj
+
     @property
     def hydraulics(self):
         return self._hydraulics
@@ -149,10 +162,10 @@ class SectionHydraulics:
 
     def to_json(self):
         """
-        Returns hydraulic data of a section as a list of json/dict objects
+        Returns hydraulic data of a section as a list of json / dict objects
 
-        :param section_id: ID of the section for which data is returned.
-        :param date: Date from which on the hydraulic data is returned.
+        : param section_id: ID of the section for which data is returned.
+        : param date: Date from which on the hydraulic data is returned.
         """
         # create hydraulic samples from dataframe
         if len(self.hydraulics) == 0:
@@ -199,6 +212,17 @@ class BoreholeHydraulics(MutableMapping):
             self.metadata = empty_borehole_metadata()
         else:
             self._from_json(hydjson)
+
+    def query_datetime(self,
+                       starttime: datetime | None = None,
+                       endtime: datetime | None = None):
+        obj = BoreholeHydraulics()
+        obj.metadata = deepcopy(self.metadata)
+
+        for key, section in self.__sections.items():
+            obj[key] = section.query_datetime(starttime, endtime)
+
+        return obj
 
     def _from_json(self, data: dict):
         data = deepcopy(data)
@@ -256,7 +280,7 @@ class BoreholeHydraulics(MutableMapping):
 
     def to_json(self):
         """
-        Returns hydraulic data of a borehole as a json/dict object
+        Returns hydraulic data of a borehole as a json / dict object
         """
         hydjson = deepcopy(self.metadata)
         hydjson['sections'] = [section.to_json()
