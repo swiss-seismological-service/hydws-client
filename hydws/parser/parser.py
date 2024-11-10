@@ -183,6 +183,7 @@ class SectionHydraulics:
             self.hydraulics.drop(columns=['datetime'], inplace=True)
 
         hydjson = deepcopy(self.metadata)
+        hydjson['publicid'] = str(hydjson['publicid'])
         hydjson['hydraulics'] = samples
         return hydjson
 
@@ -283,6 +284,7 @@ class BoreholeHydraulics(MutableMapping):
         Returns hydraulic data of a borehole as a json / dict object
         """
         hydjson = deepcopy(self.metadata)
+        hydjson['publicid'] = str(hydjson['publicid'])
         hydjson['sections'] = [section.to_json()
                                for section in self.__sections.values()]
         return hydjson
