@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=70.0.0", "wheel>=0.43.0"]
+requires = ["setuptools", "wheel", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -8,18 +8,51 @@ include = ["hydws"]
 
 [project]
 name = "hydws-client"
-version = "2.0.0"
+dynamic = ["version"]
 description = "Python client library for the HYDWS web service"
 readme = "README.md"
 authors = [{ name = "Nicolas Schmid", email = "nicolas.schmid@sed.ethz.ch" }]
 license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 
 dependencies = ["pandas", "pydantic", "pyproj", "requests"]
 
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-dev = ["pyarrow", "pytest", "isort", "pytest-cov", "tox", "flake8", "responses"]
+dev = [
+    "build",
+    "setuptools-scm",
+    "twine",
+    "pyarrow",
+    "pytest",
+    "isort",
+    "pytest-cov",
+    "tox",
+    "flake8",
+    "responses",
+]
+
+
+[project.urls]
+Documentation = "https://github.com/swiss-seismological-service/hydws-client"
+Repository = "https://github.com/swiss-seismological-service/hydws-client"
+Issues = "https://github.com/swiss-seismological-service/hydws-client/issues"
+
+
+[tool.setuptools_scm]
 
 
 [tool.pytest.ini_options]
