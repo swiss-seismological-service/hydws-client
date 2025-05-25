@@ -11,7 +11,7 @@ This client can be used to access the data from a Hydraulic Webservice more comf
 ## Installation
 Currently the package needs to be installed via the github repository:
 ```bash
-pip install git+https://gitlab.seismo.ethz.ch/indu/hydws-client.git
+pip install hydws-client
 ```
 
 ## Usage
@@ -30,7 +30,7 @@ from hydws.parser import BoreholeHydraulics, SectionHydraulics
 
 
 ```python
-hydws_url = 'http://scforge.ethz.ch:8081/hydws/v1'
+hydws_url = 'http://example.api.com/hydws/v1'
 hydws = HYDWSDataSource(hydws_url)
 ```
 
