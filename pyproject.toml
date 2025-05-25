@@ -1,3 +1,27 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=70.0.0", "wheel>=0.43.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = [""]
+include = ["hydws"]
+
+[project]
+name = "hydws-client"
+version = "2.0.0"
+description = "Python client library for the HYDWS web service"
+readme = "README.md"
+authors = [{ name = "Nicolas Schmid", email = "nicolas.schmid@sed.ethz.ch" }]
+license = { file = "LICENSE" }
+
+dependencies = ["pandas", "pydantic", "pyproj", "requests"]
+
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = ["pyarrow", "pytest", "isort", "pytest-cov", "tox", "flake8", "responses"]
+
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+filterwarnings = ["ignore::DeprecationWarning"]
