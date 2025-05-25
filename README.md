@@ -1,3 +1,9 @@
+![pypi](https://img.shields.io/pypi/v/hydws-client)
+[![PyPI - License](https://img.shields.io/pypi/l/hydws-client.svg)](https://pypi.org/project/hydws-client/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/hydws-client.svg)](https://pypi.org/project/hydws-client/)
+[![test](https://github.com/swiss-seismological-service/hydws-client/actions/workflows/tests.yml/badge.svg)](https://github.com/swiss-seismological-service/hydws-client/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/github/swiss-seismological-service/hydws-client/graph/badge.svg?token=RVJFHYLBKA)](https://codecov.io/github/swiss-seismological-service/hydws-client)
+
 # HYDWS Client
 Hydraulic Web Service Client
 This client can be used to access the data from a Hydraulic Webservice more comfortably.
