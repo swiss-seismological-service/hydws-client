@@ -5,9 +5,8 @@ from copy import deepcopy
 from datetime import datetime
 
 import pandas as pd
-
-from hydws.parser.schema import (BoreholeSchema, HydraulicSampleSchema,
-                                 SectionSchema, list_hydraulics_fields)
+from hydws.parser.schema import (BoreholeSchema, SectionSchema,
+                                 list_hydraulics_fields)
 
 
 def is_valid_uuid(val):
@@ -83,18 +82,14 @@ class SectionHydraulics:
         data : dict
             A dictionary containing the hydws-json of a section
         """
-        data = deepcopy(data)
-
         if 'hydraulics' not in data:
             data['hydraulics'] = []
 
         self.load_hydraulic_json(data['hydraulics'])
 
-        data.pop('hydraulics')
+        self.metadata = {k: v for k, v in data.items() if k != 'hydraulics'}
 
-        SectionSchema.model_validate(data)
-
-        self.metadata = data
+        SectionSchema.model_validate(self.metadata)
 
     @classmethod
     def _load_hydraulic_json(cls, data: list[dict]):
@@ -113,9 +108,6 @@ class SectionHydraulics:
         """
         if data is None or len(data) == 0:
             return pd.DataFrame()
-
-        for el in data:
-            HydraulicSampleSchema.model_validate(el)
 
         dataframe = pd.json_normalize(data, sep='_')
 
@@ -226,11 +218,10 @@ class BoreholeHydraulics(MutableMapping):
         return obj
 
     def _from_json(self, data: dict):
-        data = deepcopy(data)
-        sections = data.pop('sections')
-        BoreholeSchema.model_validate(data)
-        self.metadata = data
+        sections = data['sections']
 
+        self.metadata = {k: v for k, v in data.items() if k != 'sections'}
+        BoreholeSchema.model_validate(self.metadata)
         for section_json in sections:
             section = SectionHydraulics(section_json)
             self[section.metadata['publicid']] = section
