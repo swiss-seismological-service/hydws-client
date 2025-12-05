@@ -5,11 +5,13 @@ from copy import deepcopy
 from datetime import datetime
 
 import pandas as pd
+from typing_extensions import Self
+
 from hydws.parser.schema import (BoreholeSchema, SectionSchema,
                                  list_hydraulics_fields)
 
 
-def is_valid_uuid(val):
+def is_valid_uuid(val) -> bool:
     try:
         uuid.UUID(str(val))
         return True
@@ -17,7 +19,7 @@ def is_valid_uuid(val):
         return False
 
 
-def as_uuid(val):
+def as_uuid(val: str | uuid.UUID) -> uuid.UUID:
     if isinstance(val, uuid.UUID):
         return val
     elif isinstance(val, str) and is_valid_uuid(val):
@@ -26,11 +28,11 @@ def as_uuid(val):
         return uuid.UUID(val)
 
 
-def create_value(value):
+def create_value(value) -> dict:
     return {'value': value}
 
 
-def empty_section_metadata():
+def empty_section_metadata() -> dict:
     return {
         'publicid': uuid.uuid4(),
         'name': 'Unnamed Section',
@@ -45,7 +47,7 @@ def empty_section_metadata():
     }
 
 
-def empty_borehole_metadata():
+def empty_borehole_metadata() -> dict:
     return {
         'publicid': uuid.uuid4(),
         'name': 'Unnamed Borehole',
@@ -56,16 +58,11 @@ def empty_borehole_metadata():
 
 
 class SectionHydraulics:
-    def __init__(self, hydjson: dict = None):
-        """
-        Creates a SectionHydraulics object.
+    def __init__(self, hydjson: dict | None = None) -> None:
+        """Creates a SectionHydraulics object.
 
-        Parameters
-        ----------
-        hydjson : dict, optional
-            A dictionary containing the hydws-json of a section,
-            by default None
-
+        Args:
+            hydjson: A dictionary containing the hydws-json of a section.
         """
         self.metadata = empty_section_metadata()
         self._hydraulics = None
@@ -73,14 +70,11 @@ class SectionHydraulics:
         if hydjson:
             self._from_json(hydjson)
 
-    def _from_json(self, data: dict):
-        """
-        Loads hydws-json into the object.
+    def _from_json(self, data: dict) -> None:
+        """Loads hydws-json into the object.
 
-        Parameters
-        ----------
-        data : dict
-            A dictionary containing the hydws-json of a section
+        Args:
+            data: A dictionary containing the hydws-json of a section.
         """
         if 'hydraulics' not in data:
             data['hydraulics'] = []
@@ -92,19 +86,14 @@ class SectionHydraulics:
         SectionSchema.model_validate(self.metadata)
 
     @classmethod
-    def _load_hydraulic_json(cls, data: list[dict]):
-        """
-        Loads hydws-json of hydraulics into the object.
+    def _load_hydraulic_json(cls, data: list[dict]) -> pd.DataFrame:
+        """Loads hydws-json of hydraulics into a DataFrame.
 
-        Parameters
-        ----------
-        data : dict
-            A dictionary containing the hydws-json of hydraulics
+        Args:
+            data: A list of dictionaries containing the hydws-json.
 
-        Returns
-        -------
-        pd.DataFrame
-            A dataframe containing the hydraulic data
+        Returns:
+            A DataFrame containing the hydraulic data.
         """
         if data is None or len(data) == 0:
             return pd.DataFrame()
@@ -119,67 +108,81 @@ class SectionHydraulics:
 
         return dataframe
 
-    def load_hydraulic_json(self, data: list[dict]):
-        """
-        Loads hydws-json of hydraulics into the object.
+    def load_hydraulic_json(self, data: list[dict]) -> None:
+        """Loads hydws-json of hydraulics into the object.
 
-        Parameters
-        ----------
-        data : dict
-            A dictionary containing the hydws-json of hydraulics
+        Args:
+            data: A list of dictionaries containing the hydws-json.
         """
         self.hydraulics = self._load_hydraulic_json(data)
 
     def query_datetime(self,
                        starttime: datetime | None = None,
-                       endtime: datetime | None = None):
+                       endtime: datetime | None = None
+                       ) -> Self:
+        """Filters hydraulic data by datetime range.
 
-        obj = deepcopy(self)
-        obj.hydraulics = obj.hydraulics.loc[
-            (obj.hydraulics.index >= starttime if starttime else True)
-            & (obj.hydraulics.index <= endtime if endtime else True)
+        Args:
+            starttime: Start of the datetime range to query.
+            endtime: End of the datetime range to query.
+
+        Returns:
+            A new SectionHydraulics object with filtered data.
+        """
+        obj = SectionHydraulics()
+        obj.metadata = deepcopy(self.metadata)
+        obj.hydraulics = self.hydraulics.loc[
+            (self.hydraulics.index >= starttime if starttime else True)
+            & (self.hydraulics.index <= endtime if endtime else True)
         ]
 
         return obj
 
     @property
-    def hydraulics(self):
+    def hydraulics(self) -> pd.DataFrame | None:
         return self._hydraulics
 
     @hydraulics.setter
-    def hydraulics(self, data: pd.DataFrame):
+    def hydraulics(self, data: pd.DataFrame) -> None:
         self._validate_dataframe(data)
         data.sort_index(inplace=True)
         self._hydraulics = data
 
-    def to_json(self):
-        """
-        Returns hydraulic data of a section as a list of json / dict objects
+    def to_json(self, resample: int | None = None) -> dict:
+        """Returns hydraulic data of a section as a dict object.
 
-        : param section_id: ID of the section for which data is returned.
-        : param date: Date from which on the hydraulic data is returned.
+        Args:
+            resample: Resample the hydraulic data to this frequency in seconds.
+
+        Returns:
+            A dictionary containing section metadata and hydraulic samples.
         """
         # create hydraulic samples from dataframe
         if len(self.hydraulics) == 0:
             samples = []
         else:
-            self.hydraulics['datetime'] = self.hydraulics.index
-            self.hydraulics['datetime'] = \
-                self.hydraulics['datetime'].dt.strftime(
+            if resample is not None:
+                hydraulics = self.hydraulics.resample(
+                    f'{resample}S').mean().interpolate('time')
+            else:
+                # copy when not resampling
+                hydraulics = self.hydraulics.copy()
+
+            hydraulics['datetime'] = hydraulics.index
+            hydraulics['datetime'] = \
+                hydraulics['datetime'].dt.strftime(
                     '%Y-%m-%dT%H:%M:%S')
 
             samples = [{k: {'value': v} for k, v in m.items()
                         if v == v and v is not None}
-                       for m in self.hydraulics.to_dict('records')]
-
-            self.hydraulics.drop(columns=['datetime'], inplace=True)
+                       for m in hydraulics.to_dict('records')]
 
         hydjson = deepcopy(self.metadata)
         hydjson['publicid'] = str(hydjson['publicid'])
         hydjson['hydraulics'] = samples
         return hydjson
 
-    def _validate_dataframe(self, dataframe: pd.DataFrame):
+    def _validate_dataframe(self, dataframe: pd.DataFrame) -> None:
         hydraulic_fields = list_hydraulics_fields()
         if not all(col in hydraulic_fields for col in dataframe.columns):
             raise KeyError(
@@ -208,7 +211,17 @@ class BoreholeHydraulics(MutableMapping):
 
     def query_datetime(self,
                        starttime: datetime | None = None,
-                       endtime: datetime | None = None):
+                       endtime: datetime | None = None
+                       ) -> Self:
+        """Filters hydraulic data across all sections by datetime range.
+
+        Args:
+            starttime: Start of the datetime range to query.
+            endtime: End of the datetime range to query.
+
+        Returns:
+            A new BoreholeHydraulics object with filtered data.
+        """
         obj = BoreholeHydraulics()
         obj.metadata = deepcopy(self.metadata)
 
@@ -217,7 +230,7 @@ class BoreholeHydraulics(MutableMapping):
 
         return obj
 
-    def _from_json(self, data: dict):
+    def _from_json(self, data: dict) -> None:
         sections = data['sections']
 
         self.metadata = {k: v for k, v in data.items() if k != 'sections'}
@@ -226,17 +239,38 @@ class BoreholeHydraulics(MutableMapping):
             section = SectionHydraulics(section_json)
             self[section.metadata['publicid']] = section
 
-    def add_emtpy_section(self):
+    def add_empty_section(self) -> uuid.UUID:
+        """Adds a new empty section to the borehole.
+
+        Returns:
+            The UUID of the newly created section.
+        """
         section = SectionHydraulics()
         self[section.metadata['publicid']] = section
         return section.metadata['publicid']
 
-    def section_from_json(self, data: dict):
+    def section_from_json(self, data: dict) -> uuid.UUID:
+        """Creates a section from hydws-json and adds it to the borehole.
+
+        Args:
+            data: A dictionary containing the hydws-json of a section.
+
+        Returns:
+            The UUID of the created section.
+        """
         section = SectionHydraulics(data)
         self[section.metadata['publicid']] = section
         return section.metadata['publicid']
 
-    def section_from_dataframe(self, data: pd.DataFrame):
+    def section_from_dataframe(self, data: pd.DataFrame) -> uuid.UUID:
+        """Creates a section from a DataFrame and adds it to the borehole.
+
+        Args:
+            data: A DataFrame containing hydraulic data.
+
+        Returns:
+            The UUID of the created section.
+        """
         section = SectionHydraulics()
         section.hydraulics = data
         self[section.metadata['publicid']] = section
@@ -270,12 +304,18 @@ class BoreholeHydraulics(MutableMapping):
     def __repr__(self):
         return f'<HYDWSParser: {repr(self.__sections)}>'
 
-    def to_json(self):
-        """
-        Returns hydraulic data of a borehole as a json / dict object
+    def to_json(self, resample: int | None = None) -> dict:
+        """Returns hydraulic data of a borehole as a dict object.
+
+        Args:
+            resample: Resample the hydraulic data to this frequency in seconds.
+
+        Returns:
+            A dictionary containing borehole metadata and all sections with
+            their hydraulic samples.
         """
         hydjson = deepcopy(self.metadata)
         hydjson['publicid'] = str(hydjson['publicid'])
-        hydjson['sections'] = [section.to_json()
+        hydjson['sections'] = [section.to_json(resample=resample)
                                for section in self.__sections.values()]
         return hydjson

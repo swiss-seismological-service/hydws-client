@@ -227,13 +227,13 @@ class RawHydraulicsParser:
     def _apply_conditions(self, col_config, df):
 
         results_column = df[df.columns.intersection(
-            [col_config['columnNames'][0]])].copy().sum(axis=1)
+            [col_config['columnNames'][0]])].sum(axis=1)
         results_column.values[:] = 0
 
         for condition in col_config['conditions']:
 
             condition_column = df[df.columns.intersection(
-                condition['columnNames'])].copy().sum(axis=1)
+                condition['columnNames'])].sum(axis=1)
 
             if condition_column.empty:
                 continue
