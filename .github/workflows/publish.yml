@@ -25,9 +25,8 @@ jobs:
             - name: Get latest tag
               id: get-tag
               run: |
-                  TAG=$(git describe --tags --exact-match HEAD 2>/dev/null || echo "")
-                  echo "TAG=$TAG" >> $GITHUB_ENV
-                  echo "Found tag: $TAG"
+                  echo "TAG=$GITHUB_REF_NAME" >> $GITHUB_ENV
+                  echo "Found tag: $GITHUB_REF_NAME"
             - name: Set up Python
               uses: actions/setup-python@v5
               with:
