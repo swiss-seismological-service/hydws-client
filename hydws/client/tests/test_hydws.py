@@ -161,25 +161,32 @@ class TestHydraulicData:
         assert len(result) == 29
 
     @responses.activate
-    def test_get_section_hydraulics_pandas(self,
-                                           metadata_json,
-                                           hydraulics_json):
+    def test_get_section_hydraulics_pandas(self, metadata_json):
         section_id = "c0c71ae8-e37a-4ad1-9e91-0407cf0792b1"
         borehole_id = metadata_json[0]['publicid']
+        csv_content = (
+            "datetime,toppressure,toptemperature\n"
+            "2020-11-24T13:00:00,100.5,25.0\n"
+            "2020-11-24T13:01:00,101.0,25.1\n"
+        )
         responses.add(
             responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
         responses.add(
             responses.GET,
             f"{BASE_URL}/boreholes/{borehole_id}/sections/{section_id}"
             "/hydraulics",
-            json=hydraulics_json)
+            body=csv_content,
+            content_type='text/csv')
         client = HYDWSDataSource(BASE_URL)
         result = client.get_section_hydraulics(
             "ST1", "ST1_section_02",
             datetime(2020, 11, 1), datetime(2020, 12, 1),
             format='pandas')
         assert isinstance(result, pd.DataFrame)
-        assert len(result) == 29
+        assert len(result) == 2
+        assert 'toppressure' in result.columns
+        assert result.index.name == 'datetime'
+        assert 'format=csv' in responses.calls[1].request.url
 
     @responses.activate
     def test_get_section_hydraulics_empty(self, metadata_json):

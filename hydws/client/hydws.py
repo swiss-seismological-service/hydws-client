@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import uuid
@@ -7,7 +8,6 @@ import pandas as pd
 import requests
 
 from hydws import NoContent, RequestsError, make_request
-from hydws.parser import SectionHydraulics
 
 
 class HYDWSDataSource:
@@ -204,11 +204,12 @@ class HYDWSDataSource:
         section_metadata['hydraulics'] = section_hydraulics
         return section_metadata
 
-    def get_section_hydraulics(self, borehole: str,
-                               section: str,
-                               starttime: datetime,
-                               endtime: datetime = datetime.now(),
-                               format: str = 'json') -> list:
+    def get_section_hydraulics(
+            self, borehole: str,
+            section: str,
+            starttime: datetime,
+            endtime: datetime = datetime.now(),
+            format: str = 'json') -> list | pd.DataFrame:
         """
         Get section hydraulics without any metadata.
 
@@ -216,9 +217,9 @@ class HYDWSDataSource:
         :param section:     PublicID or name of the section.
         :param starttime:   Datetime from when on the data should be retrieved.
         :param endtime:     Datetime until when the data should be retrieved.
-        :param format:      Format of the returned data, 'json' or 'pandas'.
+        :param format:      Format of the returned data: 'json' or 'pandas'.
 
-        :returns: List of hydraulic samples for the specified parameters.
+        :returns: List of hydraulic samples (json) or DataFrame (pandas).
         """
         borehole_id = self._get_borehole_id(borehole)
         section_id = self._get_section_id(borehole_id, section)
@@ -226,6 +227,9 @@ class HYDWSDataSource:
         params = {
             'starttime': starttime.strftime("%Y-%m-%dT%H:%M:%S"),
             'endtime': endtime.strftime("%Y-%m-%dT%H:%M:%S")}
+
+        if format == 'pandas':
+            params['format'] = 'csv'
 
         self.logger.info(
             f"Request borehole / hydraulic data from hydws (url={self.url}, "
@@ -235,12 +239,16 @@ class HYDWSDataSource:
             f'{self.url}/boreholes/{borehole_id}/' \
             f'sections/{section_id}/hydraulics'
 
-        hydraulics = self._make_api_request(request_url, params)
-
         if format == 'pandas':
-            if not hydraulics:
+            csv_data = self._make_api_request(
+                request_url, params, parse_json=False)
+            if not csv_data:
                 return pd.DataFrame()
-            return SectionHydraulics._load_hydraulic_json(hydraulics)
+            df = pd.read_csv(io.StringIO(csv_data), parse_dates=['datetime'])
+            df.set_index('datetime', inplace=True)
+            return df
+
+        hydraulics = self._make_api_request(request_url, params)
 
         if not hydraulics:
             return []
@@ -289,7 +297,8 @@ class HYDWSDataSource:
 
         return section['publicid']
 
-    def _make_api_request(self, request_url: str, params: dict = {}):
+    def _make_api_request(self, request_url: str, params: dict = {},
+                          parse_json: bool = True):
         try:
             response = make_request(
                 requests.get,
@@ -302,11 +311,13 @@ class HYDWSDataSource:
 
         except NoContent:
             self.logger.warning('No data received.')
-            return {}
+            return {} if parse_json else ''
         except RequestsError as err:
             self.logger.error(f"Request Error while fetching data ({err}).")
         except BaseException as err:
             self.logger.error(f"Error while fetching data {err}")
         else:
             self.logger.info('HYDWS data received.')
-            return json.loads(response)
+            if parse_json:
+                return json.loads(response)
+            return response.decode('utf-8')
