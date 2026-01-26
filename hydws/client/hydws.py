@@ -17,18 +17,45 @@ class HYDWSDataSource:
 
     def __init__(self,
                  url: str,
-                 timeout: int = None) -> None:
+                 timeout: int = None,
+                 starttime: datetime = None,
+                 endtime: datetime = None,
+                 minlatitude: float = None,
+                 maxlatitude: float = None,
+                 minlongitude: float = None,
+                 maxlongitude: float = None) -> None:
         """
         Initialize Class.
-        :param url:     URL of the hydrological webservice
-        :param timeout: after how long, contacting the webservice should
-                        be aborted
+        :param url:          URL of the hydrological webservice
+        :param timeout:      after how long, contacting the webservice should
+                             be aborted
+        :param starttime:    Filter boreholes with data after this time
+        :param endtime:      Filter boreholes with data before this time
+        :param minlatitude:  Filter boreholes with latitude >= this value
+        :param maxlatitude:  Filter boreholes with latitude <= this value
+        :param minlongitude: Filter boreholes with longitude >= this value
+        :param maxlongitude: Filter boreholes with longitude <= this value
         """
         self.url = url
         self._timeout = timeout
         self.logger = logging.getLogger(__name__)
 
-        self.metadata = self._make_api_request(f'{self.url}/boreholes')
+        params = {}
+        if starttime is not None:
+            params['starttime'] = starttime.strftime("%Y-%m-%dT%H:%M:%S")
+        if endtime is not None:
+            params['endtime'] = endtime.strftime("%Y-%m-%dT%H:%M:%S")
+        if minlatitude is not None:
+            params['minlatitude'] = minlatitude
+        if maxlatitude is not None:
+            params['maxlatitude'] = maxlatitude
+        if minlongitude is not None:
+            params['minlongitude'] = minlongitude
+        if maxlongitude is not None:
+            params['maxlongitude'] = maxlongitude
+
+        self.metadata = self._make_api_request(
+            f'{self.url}/boreholes', params)
 
     def list_boreholes(self) -> list:
         """

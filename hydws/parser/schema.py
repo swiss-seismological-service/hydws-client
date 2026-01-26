@@ -4,10 +4,6 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class RealTest(BaseModel):
-    value: list[dict] = []
-
-
 class RealValue(BaseModel):
     value: float = None
     uncertainty: float | None = None
@@ -18,6 +14,15 @@ class RealValue(BaseModel):
 
 class RealDatetime(RealValue):
     value: datetime
+
+
+class CreationInfoSchema(BaseModel):
+    author: str | None = None
+    agencyid: str | None = None
+    creationtime: datetime | None = None
+    version: str | None = None
+    copyrightowner: str | None = None
+    license: str | None = None
 
 
 class HydraulicSampleSchema(BaseModel):
@@ -48,8 +53,8 @@ class SectionSchema(BaseModel):
     bottommeasureddepth: RealValue = None
     holediameter: RealValue = None
     casingdiameter: RealValue = None
-    topclosed: bool
-    bottomclosed: bool
+    topclosed: bool | None = None
+    bottomclosed: bool | None = None
     sectiontype: str | None = None
     casingtype: str | None = None
     description: str | None = None
@@ -64,10 +69,11 @@ class BoreholeSchema(BaseModel):
     altitude: RealValue
     bedrockaltitude: RealValue = {}
     measureddepth: RealValue = None
-    description: str = None
+    description: str | None = None
     name: str = None
-    location_name: str = None
-    institution: str = None
+    location: str | None = None
+    institution: str | None = None
+    creationinfo: CreationInfoSchema | None = None
     sections: list[SectionSchema] = []
 
 

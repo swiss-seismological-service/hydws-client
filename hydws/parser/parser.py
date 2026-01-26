@@ -42,8 +42,6 @@ def empty_section_metadata() -> dict:
         'bottomlongitude': create_value(0),
         'bottomlatitude': create_value(0),
         'bottomaltitude': create_value(-1),
-        'topclosed': True,
-        'bottomclosed': True,
     }
 
 
