@@ -102,7 +102,8 @@ class TestParse:
         with pytest.raises(KeyError, match='Return format unknown'):
             parser.parse(pd.DataFrame(), format='invalid')
 
-    def test_skips_missing_columns_and_zero_data(self, borehole_metadata, tmp_path):
+    def test_skips_missing_columns_and_zero_data(self, borehole_metadata,
+                                                 tmp_path):
         """Missing columns and all-zero data are skipped gracefully."""
         config = [{'fieldName': 'toppressure', 'columnNames': ['missing'],
                    'assignTo': 'sectionID', 'section': 'ST1_section_02'}]
@@ -146,21 +147,28 @@ class TestParse:
 class TestConditions:
 
     @pytest.mark.parametrize('rule,values,expected', [
-        pytest.param('above', [40.0, 60.0, 80.0], [0.0, 60.0, 80.0], id='above'),
-        pytest.param('below', [40.0, 60.0, 30.0], [40.0, 0.0, 30.0], id='below'),
+        pytest.param('above', [40.0, 60.0, 80.0], [
+                     0.0, 60.0, 80.0], id='above'),
+        pytest.param('below', [40.0, 60.0, 30.0], [
+                     40.0, 0.0, 30.0], id='below'),
     ])
-    def test_basic_rules(self, borehole_metadata, tmp_path, rule, values, expected):
+    def test_basic_rules(self, borehole_metadata,
+                         tmp_path, rule, values, expected):
         """Test above/below condition rules with threshold=50."""
         config = [{'fieldName': 'toppressure', 'columnNames': ['p'],
                    'assignTo': 'sectionID', 'section': 'ST1_section_02',
-                   'conditions': [{'columnNames': ['p'], 'rule': rule, 'value': 50}]}]
+                   'conditions': [{'columnNames': ['p'],
+                                   'rule': rule,
+                                   'value': 50}]}]
         config_path = make_config_file(config, tmp_path)
         parser = RawHydraulicsParser(config_path, borehole_metadata)
         df = pd.DataFrame({'p': values},
-                          index=pd.date_range('2020-11-24', periods=len(values)))
+                          index=pd.date_range('2020-11-24',
+                                              periods=len(values)))
 
         result = parser.parse(df, format='hydwsparser')
-        hydraulics = result[BOREHOLE_ID][SECTION_02_ID].hydraulics['toppressure']
+        hydraulics = \
+            result[BOREHOLE_ID][SECTION_02_ID].hydraulics['toppressure']
         for i, exp in enumerate(expected):
             assert hydraulics.iloc[i] == exp
 
@@ -170,15 +178,18 @@ class TestConditions:
                    'assignTo': 'sectionID', 'section': 'ST1_section_02',
                    'conditions': [
                        {'columnNames': ['main'], 'rule': 'above', 'value': 0},
-                       {'columnNames': ['alt'], 'rule': 'above-current', 'value': 10}
-                   ]}]
+                       {'columnNames': ['alt'],
+                           'rule': 'above-current', 'value': 10}
+        ]}]
         config_path = make_config_file(config, tmp_path)
         parser = RawHydraulicsParser(config_path, borehole_metadata)
-        df = pd.DataFrame({'main': [50.0, 50.0, 50.0], 'alt': [70.0, 55.0, 100.0]},
+        df = pd.DataFrame({'main': [50.0, 50.0, 50.0],
+                           'alt': [70.0, 55.0, 100.0]},
                           index=pd.date_range('2020-11-24', periods=3))
 
         result = parser.parse(df, format='hydwsparser')
-        hydraulics = result[BOREHOLE_ID][SECTION_02_ID].hydraulics['toppressure']
+        hydraulics = \
+            result[BOREHOLE_ID][SECTION_02_ID].hydraulics['toppressure']
         # 70-50=20>10 -> 70; 55-50=5<10 -> 50; 100-50=50>10 -> 100
         assert list(hydraulics) == [70.0, 50.0, 100.0]
 
@@ -188,15 +199,18 @@ class TestConditions:
                    'assignTo': 'sectionID', 'section': 'ST1_section_02',
                    'conditions': [
                        {'columnNames': ['main'], 'rule': 'above', 'value': 0},
-                       {'columnNames': ['alt'], 'rule': 'below-current', 'value': 10}
-                   ]}]
+                       {'columnNames': ['alt'],
+                           'rule': 'below-current', 'value': 10}
+        ]}]
         config_path = make_config_file(config, tmp_path)
         parser = RawHydraulicsParser(config_path, borehole_metadata)
-        df = pd.DataFrame({'main': [100.0, 50.0, 100.0], 'alt': [80.0, 45.0, 50.0]},
+        df = pd.DataFrame({'main': [100.0, 50.0, 100.0],
+                           'alt': [80.0, 45.0, 50.0]},
                           index=pd.date_range('2020-11-24', periods=3))
 
         result = parser.parse(df, format='hydwsparser')
-        hydraulics = result[BOREHOLE_ID][SECTION_02_ID].hydraulics['toppressure']
+        hydraulics = \
+            result[BOREHOLE_ID][SECTION_02_ID].hydraulics['toppressure']
         # 100-80=20>10 -> 80; 50-45=5<10 -> 50; 100-50=50>10 -> 50
         assert list(hydraulics) == [80.0, 50.0, 50.0]
 
@@ -204,7 +218,8 @@ class TestConditions:
         """Unknown condition rule raises ValueError."""
         config = [{'fieldName': 'toppressure', 'columnNames': ['p'],
                    'assignTo': 'sectionID', 'section': 'ST1_section_02',
-                   'conditions': [{'columnNames': ['p'], 'rule': 'invalid', 'value': 50}]}]
+                   'conditions': [{'columnNames': ['p'],
+                                   'rule': 'invalid', 'value': 50}]}]
         config_path = make_config_file(config, tmp_path)
         parser = RawHydraulicsParser(config_path, borehole_metadata)
         df = pd.DataFrame({'p': [40.0]},
@@ -217,7 +232,9 @@ class TestConditions:
         """Condition with missing column is skipped gracefully."""
         config = [{'fieldName': 'toppressure', 'columnNames': ['p'],
                    'assignTo': 'sectionID', 'section': 'ST1_section_02',
-                   'conditions': [{'columnNames': ['missing'], 'rule': 'above', 'value': 50}]}]
+                   'conditions': [{'columnNames': ['missing'],
+                                   'rule': 'above',
+                                   'value': 50}]}]
         config_path = make_config_file(config, tmp_path)
         parser = RawHydraulicsParser(config_path, borehole_metadata)
         df = pd.DataFrame({'p': [40.0, 60.0]},
@@ -235,7 +252,8 @@ class TestUnitConversion:
         pytest.param('add', 273.15, 20.0, 293.15, id='add'),
         pytest.param('sub', 50, 100.0, 50.0, id='subtract'),
     ])
-    def test_operations(self, borehole_metadata, tmp_path, op, factor, input_val, expected):
+    def test_operations(self, borehole_metadata, tmp_path, op, factor,
+                        input_val, expected):
         """Test unit conversion operations."""
         config = [{'fieldName': 'topflow', 'columnNames': ['v'],
                    'assignTo': 'sectionID', 'section': 'ST1_section_02',
@@ -246,7 +264,8 @@ class TestUnitConversion:
                           index=pd.date_range('2020-11-24', periods=1))
 
         result = parser.parse(df, format='hydwsparser')
-        actual = result[BOREHOLE_ID][SECTION_02_ID].hydraulics['topflow'].iloc[0]
+        actual = \
+            result[BOREHOLE_ID][SECTION_02_ID].hydraulics['topflow'].iloc[0]
         assert actual == pytest.approx(expected)
 
 
@@ -263,12 +282,15 @@ class TestSurfacePressureCorrection:
                           index=pd.date_range('2020-11-24', periods=1))
 
         result = parser.parse(df, format='hydwsparser')
-        actual = result[BOREHOLE_ID][SECTION_02_ID].hydraulics['toppressure'].iloc[0]
+        actual = result[BOREHOLE_ID][SECTION_02_ID
+                                     ].hydraulics['toppressure'].iloc[0]
         # rho * g * h = 998.2 * 9.81 * (1484.905 - 1204.076)
         correction = 998.2 * (1484.905 - 1204.076) * 9.81
         assert actual == pytest.approx(1000000.0 + correction, rel=1e-3)
 
-    def test_no_correction_for_downhole_or_non_pressure(self, borehole_metadata, tmp_path):
+    def test_no_correction_for_downhole_or_non_pressure(self,
+                                                        borehole_metadata,
+                                                        tmp_path):
         """No correction for downhole sensors or non-pressure fields."""
         config = [
             {'fieldName': 'toppressure', 'columnNames': ['dp'],
@@ -285,7 +307,8 @@ class TestSurfacePressureCorrection:
 
         result = parser.parse(df, format='hydwsparser')
         section = result[BOREHOLE_ID][SECTION_02_ID]
-        assert section.hydraulics['toppressure'].iloc[0] == 1000000.0  # no correction
+        # no correction
+        assert section.hydraulics['toppressure'].iloc[0] == 1000000.0
         assert section.hydraulics['topflow'].iloc[0] == 0.001  # no correction
 
 
@@ -303,7 +326,8 @@ class TestPlanAssignment:
         config_path = make_config_file(config, tmp_path)
         parser = RawHydraulicsParser(config_path, borehole_metadata)
         df = pd.DataFrame({'p': range(6)},
-                          index=pd.date_range('2020-11-24 13:00', periods=6, freq='1min'))
+                          index=pd.date_range('2020-11-24 13:00',
+                                              periods=6, freq='1min'))
 
         result = parser.parse(df, format='hydwsparser')
         borehole = result[BOREHOLE_ID]
@@ -323,7 +347,8 @@ class TestPlanAssignment:
         parser = RawHydraulicsParser(config_path, borehole_metadata)
         # Data only for first period
         df = pd.DataFrame({'p': [1.0, 2.0, 3.0]},
-                          index=pd.date_range('2020-11-24 13:00', periods=3, freq='1min'))
+                          index=pd.date_range('2020-11-24 13:00',
+                                              periods=3, freq='1min'))
 
         result = parser.parse(df, format='hydwsparser')
         borehole = result[BOREHOLE_ID]
