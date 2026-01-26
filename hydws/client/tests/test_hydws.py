@@ -165,7 +165,7 @@ class TestHydraulicData:
         section_id = "c0c71ae8-e37a-4ad1-9e91-0407cf0792b1"
         borehole_id = metadata_json[0]['publicid']
         csv_content = (
-            "datetime,toppressure,toptemperature\n"
+            "datetime_value,toppressure_value,toptemperature_value\n"
             "2020-11-24T13:00:00,100.5,25.0\n"
             "2020-11-24T13:01:00,101.0,25.1\n"
         )
@@ -223,3 +223,145 @@ class TestHydraulicData:
             format='pandas')
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
+
+
+class TestWriteOperations:
+    @responses.activate
+    def test_post_borehole(self, metadata_json, borehole_json):
+        """Test POST borehole with headers and params."""
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+        responses.add(
+            responses.POST, f"{BASE_URL}/boreholes",
+            json={'publicid': 'new-uuid-here'}, status=201)
+
+        client = HYDWSDataSource(BASE_URL, api_key='test-key')
+        result = client.post_borehole(
+            borehole_json, merge=True, merge_limit=30)
+
+        assert result['publicid'] == 'new-uuid-here'
+        post_request = responses.calls[1].request
+        assert post_request.headers['x-api-key'] == 'test-key'
+        assert 'merge=true' in post_request.url
+        assert 'merge_limit=30' in post_request.url
+        body = json.loads(post_request.body)
+        assert body['name'] == borehole_json['name']
+
+    @responses.activate
+    def test_post_borehole_from_parser(self, metadata_json, borehole_json):
+        """Test POST with BoreholeHydraulics object."""
+        from hydws.parser import BoreholeHydraulics
+
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+        responses.add(
+            responses.POST, f"{BASE_URL}/boreholes",
+            json={'publicid': 'new-uuid'}, status=201)
+
+        client = HYDWSDataSource(BASE_URL, api_key='test-key')
+        bh = BoreholeHydraulics(borehole_json)
+        result = client.post_borehole(bh)
+
+        assert result['publicid'] == 'new-uuid'
+        body = json.loads(responses.calls[1].request.body)
+        assert body['name'] == borehole_json['name']
+
+    @responses.activate
+    def test_post_borehole_test_mode(self, metadata_json, borehole_json,
+                                     capsys):
+        """Test POST in test mode (dry run)."""
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+
+        client = HYDWSDataSource(BASE_URL)
+        result = client.post_borehole(borehole_json, test=True)
+
+        assert result is None
+        assert len(responses.calls) == 1  # Only init GET, no POST
+        captured = capsys.readouterr()
+        assert "Borehole: ST1" in captured.out
+        assert "Sections: 2" in captured.out
+
+    @responses.activate
+    def test_delete_borehole(self, metadata_json):
+        """Test DELETE borehole."""
+        borehole_id = metadata_json[0]['publicid']
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+        responses.add(
+            responses.DELETE, f"{BASE_URL}/boreholes/{borehole_id}",
+            status=204)
+
+        client = HYDWSDataSource(BASE_URL, api_key='test-key')
+        client.delete_borehole("ST1")
+
+        delete_request = responses.calls[1].request
+        assert delete_request.headers['x-api-key'] == 'test-key'
+
+    @responses.activate
+    def test_delete_borehole_test_mode(self, metadata_json, borehole_json,
+                                       capsys):
+        """Test DELETE borehole in test mode."""
+        borehole_id = metadata_json[0]['publicid']
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes/{borehole_id}",
+            json=borehole_json)
+
+        client = HYDWSDataSource(BASE_URL)
+        client.delete_borehole("ST1", test=True)
+
+        assert len(responses.calls) == 2  # Init GET + check GET, no DELETE
+        captured = capsys.readouterr()
+        assert "Borehole: ST1" in captured.out
+        assert "Would be deleted" in captured.out
+
+    @responses.activate
+    def test_delete_section_hydraulics(self, metadata_json):
+        """Test DELETE section hydraulics with time params."""
+        borehole_id = metadata_json[0]['publicid']
+        section_id = "c0c71ae8-e37a-4ad1-9e91-0407cf0792b1"
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+        responses.add(
+            responses.DELETE,
+            f"{BASE_URL}/boreholes/{borehole_id}/sections/{section_id}"
+            "/hydraulics",
+            status=204)
+
+        client = HYDWSDataSource(BASE_URL, api_key='test-key')
+        client.delete_section_hydraulics(
+            "ST1", "ST1_section_02",
+            starttime=datetime(2020, 11, 1),
+            endtime=datetime(2020, 12, 1))
+
+        delete_request = responses.calls[1].request
+        assert delete_request.headers['x-api-key'] == 'test-key'
+        assert 'starttime=' in delete_request.url
+        assert 'endtime=' in delete_request.url
+
+    @responses.activate
+    def test_delete_section_hydraulics_test_mode(self, metadata_json,
+                                                 hydraulics_json, capsys):
+        """Test DELETE section hydraulics in test mode."""
+        borehole_id = metadata_json[0]['publicid']
+        section_id = "c0c71ae8-e37a-4ad1-9e91-0407cf0792b1"
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+        responses.add(
+            responses.GET,
+            f"{BASE_URL}/boreholes/{borehole_id}/sections/{section_id}"
+            "/hydraulics",
+            json=hydraulics_json)
+
+        client = HYDWSDataSource(BASE_URL)
+        client.delete_section_hydraulics(
+            "ST1", "ST1_section_02",
+            starttime=datetime(2020, 11, 1),
+            endtime=datetime(2020, 12, 1),
+            test=True)
+
+        assert len(responses.calls) == 2  # Init GET + check GET, no DELETE
+        captured = capsys.readouterr()
+        assert "Hydraulic samples to delete: 29" in captured.out

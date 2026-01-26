@@ -397,6 +397,85 @@ section_json_resampled = section.to_json(resample=60)
 borehole_json = borehole.to_json()
 ```
 
+### Write Operations (POST/DELETE)
+
+The client supports write operations when an API key is provided:
+
+```python
+# Initialize with API key for write operations
+hydws = HYDWSDataSource(hydws_url, api_key='your-api-key')
+```
+
+#### Posting Borehole Data
+
+You can post borehole data using either a `BoreholeHydraulics` object or a raw dict:
+
+```python
+# Create and populate a borehole
+borehole = BoreholeHydraulics()
+borehole.metadata['name'] = 'New Borehole'
+section_id = borehole.section_from_dataframe(df)
+
+# Post to the API
+result = hydws.post_borehole(borehole)
+
+# Or with merge options (to merge with existing data)
+result = hydws.post_borehole(borehole, merge=True, merge_limit=60)
+```
+
+#### Deleting Data
+
+```python
+# Delete a borehole (by name or UUID)
+hydws.delete_borehole('Borehole Name')
+
+# Delete hydraulic samples for a section (optionally within a time range)
+hydws.delete_section_hydraulics(
+    'Borehole Name',
+    'Section Name',
+    starttime=datetime(2024, 1, 1),
+    endtime=datetime(2024, 1, 31)
+)
+```
+
+#### Dry-Run Mode (test=True)
+
+All write operations support a `test` parameter for dry-run simulation:
+
+```python
+# Preview what would be posted (validates and prints stats)
+hydws.post_borehole(borehole, test=True)
+# Output:
+# Borehole: New Borehole
+# Sections: 2
+# Total hydraulics: 1000
+#   - Section 1: 500 hydraulic samples
+#   - Section 2: 500 hydraulic samples
+
+# Preview what would be deleted
+hydws.delete_borehole('Borehole Name', test=True)
+# Output:
+# Borehole: Borehole Name
+# Sections: 3
+# Would be deleted.
+
+# Check how many hydraulic samples would be deleted
+hydws.delete_section_hydraulics('Borehole', 'Section', test=True)
+# Output:
+# Hydraulic samples to delete: 150
+```
+
+### Loading Data from Files
+
+You can load borehole data directly from a JSON file:
+
+```python
+from hydws.parser import BoreholeHydraulics
+
+# Load borehole from a HYDWS JSON file
+borehole = BoreholeHydraulics.from_file('path/to/borehole.json')
+```
+
 ### Creating Data Programmatically
 
 You can create hydraulic data from your own DataFrames or JSON.

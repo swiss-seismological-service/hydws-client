@@ -7,7 +7,8 @@ from datetime import datetime
 import pandas as pd
 import requests
 
-from hydws import NoContent, RequestsError, make_request
+from hydws import ClientError, NoContent, RequestsError, make_request
+from hydws.parser.schema import BoreholeSchema
 
 
 class HYDWSDataSource:
@@ -18,6 +19,7 @@ class HYDWSDataSource:
     def __init__(self,
                  url: str,
                  timeout: int = None,
+                 api_key: str = None,
                  starttime: datetime = None,
                  endtime: datetime = None,
                  minlatitude: float = None,
@@ -29,6 +31,7 @@ class HYDWSDataSource:
         :param url:          URL of the hydrological webservice
         :param timeout:      after how long, contacting the webservice should
                              be aborted
+        :param api_key:      API key for write operations (POST/DELETE)
         :param starttime:    Filter boreholes with data after this time
         :param endtime:      Filter boreholes with data before this time
         :param minlatitude:  Filter boreholes with latitude >= this value
@@ -38,6 +41,7 @@ class HYDWSDataSource:
         """
         self.url = url
         self._timeout = timeout
+        self._api_key = api_key
         self.logger = logging.getLogger(__name__)
 
         params = {}
@@ -244,7 +248,10 @@ class HYDWSDataSource:
                 request_url, params, parse_json=False)
             if not csv_data:
                 return pd.DataFrame()
-            df = pd.read_csv(io.StringIO(csv_data), parse_dates=['datetime'])
+            df = pd.read_csv(
+                io.StringIO(csv_data), parse_dates=['datetime_value'])
+            # Strip _value suffix from columns to match JSON format
+            df.columns = df.columns.str.replace('_value', '', regex=False)
             df.set_index('datetime', inplace=True)
             return df
 
@@ -254,6 +261,158 @@ class HYDWSDataSource:
             return []
 
         return hydraulics
+
+    def post_borehole(self, borehole, merge: bool = False,
+                      merge_limit: int = 60, test: bool = False) -> dict:
+        """
+        Post borehole data to the API.
+
+        :param borehole:    BoreholeHydraulics object or dict
+        :param merge:       Merge with existing data if True
+        :param merge_limit: Time limit for merging (seconds)
+        :param test:        If True, validate and print stats without posting
+
+        :returns: Created borehole data from API (or None in test mode)
+        """
+        data = borehole.to_json() if hasattr(borehole, 'to_json') else borehole
+
+        if test:
+            BoreholeSchema.model_validate(data)
+            name = data.get('name', 'Unnamed')
+            sections = data.get('sections', [])
+            n_sections = len(sections)
+            hydraulics_counts = [
+                len(s.get('hydraulics', [])) for s in sections
+            ]
+            total_hydraulics = sum(hydraulics_counts)
+            print(f"Borehole: {name}")
+            print(f"Sections: {n_sections}")
+            print(f"Total hydraulics: {total_hydraulics}")
+            for s in sections:
+                s_name = s.get('name', 'Unnamed')
+                s_hydraulics = len(s.get('hydraulics', []))
+                print(f"  - {s_name}: {s_hydraulics} hydraulic samples")
+            return None
+
+        params = {'merge': str(merge).lower(), 'merge_limit': merge_limit}
+        headers = {'x-api-key': self._api_key} if self._api_key else {}
+
+        try:
+            response = make_request(requests.post,
+                                    f'{self.url}/boreholes',
+                                    params,
+                                    self._timeout,
+                                    nocontent_codes=(),
+                                    success_codes=(200, 201),
+                                    headers=headers,
+                                    json=data)
+            return json.loads(response)
+        except ClientError as err:
+            if err.response.status_code == 401 and not self._api_key:
+                raise ClientError(
+                    "Authentication failed (401). "
+                    "Consider providing api_key parameter.",
+                    response=err.response)
+            raise
+
+    def delete_borehole(self, borehole: str, test: bool = False) -> None:
+        """
+        Delete a borehole.
+
+        :param borehole: PublicID or name of the borehole
+        :param test:     If True, check existence and print info
+        """
+        borehole_id = self._get_borehole_id(borehole)
+
+        if test:
+            request_url = f'{self.url}/boreholes/{borehole_id}'
+            response = make_request(requests.get,
+                                    request_url,
+                                    {},
+                                    self._timeout,
+                                    nocontent_codes=(404,),
+                                    success_codes=(200,))
+            borehole_data = json.loads(response)
+            name = borehole_data.get('name', 'Unnamed')
+            sections = borehole_data.get('sections', [])
+            print(f"Borehole: {name}")
+            print(f"Sections: {len(sections)}")
+            print("Would be deleted.")
+            return
+
+        headers = {'x-api-key': self._api_key} if self._api_key else {}
+
+        try:
+            make_request(requests.delete,
+                         f'{self.url}/boreholes/{borehole_id}',
+                         {},
+                         self._timeout,
+                         nocontent_codes=(),
+                         success_codes=(200, 204),
+                         headers=headers)
+        except ClientError as err:
+            if err.response.status_code == 401 and not self._api_key:
+                raise ClientError(
+                    "Authentication failed (401). "
+                    "Consider providing api_key parameter.",
+                    response=err.response)
+            raise
+
+    def delete_section_hydraulics(self, borehole: str, section: str,
+                                  starttime: datetime = None,
+                                  endtime: datetime = None,
+                                  test: bool = False) -> None:
+        """
+        Delete hydraulic samples for a section.
+
+        :param borehole:  PublicID or name of the borehole
+        :param section:   PublicID or name of the section
+        :param starttime: Optional start of time range to delete
+        :param endtime:   Optional end of time range to delete
+        :param test:      If True, show count without deleting
+        """
+        borehole_id = self._get_borehole_id(borehole)
+        section_id = self._get_section_id(borehole_id, section)
+
+        params = {}
+        if starttime:
+            params['starttime'] = starttime.strftime("%Y-%m-%dT%H:%M:%S")
+        if endtime:
+            params['endtime'] = endtime.strftime("%Y-%m-%dT%H:%M:%S")
+
+        url = f'{self.url}/boreholes/{borehole_id}/sections/{section_id}' \
+            f'/hydraulics'
+
+        if test:
+            response = make_request(requests.get,
+                                    url,
+                                    params,
+                                    self._timeout,
+                                    nocontent_codes=(204, 404),
+                                    success_codes=(200,))
+            hydraulics = json.loads(response)
+            count = len(hydraulics) if hydraulics else 0
+            print(f"Hydraulic samples to delete: {count}")
+            return
+
+        headers = {'x-api-key': self._api_key} if self._api_key else {}
+
+        try:
+            make_request(
+                requests.delete,
+                url,
+                params,
+                self._timeout,
+                nocontent_codes=(),
+                success_codes=(200, 204),
+                headers=headers)
+        except ClientError as err:
+            if err.response.status_code == 401 and not self._api_key:
+                raise ClientError(
+                    "Authentication failed (401). "
+                    "Consider providing api_key parameter.",
+                    response=err.response)
+            raise
 
     def _get_borehole_id(self, borehole_name: str) -> str:
         """
@@ -310,7 +469,6 @@ class HYDWSDataSource:
                     404))
 
         except NoContent:
-            self.logger.warning('No data received.')
             return {} if parse_json else ''
         except RequestsError as err:
             self.logger.error(f"Request Error while fetching data ({err}).")

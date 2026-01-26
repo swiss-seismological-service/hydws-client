@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from collections.abc import MutableMapping
@@ -227,6 +228,18 @@ class BoreholeHydraulics(MutableMapping):
             obj[key] = section.query_datetime(starttime, endtime)
 
         return obj
+
+    @classmethod
+    def from_file(cls, filepath: str) -> None:
+        """Loads hydws-json from a file into the object.
+
+        Args:
+            filepath: Path to the hydws-json file.
+        """
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        return cls(data)
 
     def _from_json(self, data: dict) -> None:
         sections = data['sections']

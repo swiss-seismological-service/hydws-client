@@ -18,7 +18,7 @@ class ClientError(RequestsError):
 
 
 def make_request(request, url, params={}, timeout=None,
-                 nocontent_codes=(204,), **kwargs):
+                 nocontent_codes=(204,), success_codes=(200,), **kwargs):
     """
     Make a normal request
 
@@ -28,6 +28,8 @@ def make_request(request, url, params={}, timeout=None,
     :params dict params: Dictionary of query parameters
     :param timeout: Request timeout
     :type timeout: None or int or tuple
+    :param nocontent_codes: Status codes that indicate no content
+    :param success_codes: Status codes that indicate success
 
     :return: content of response
     :rtype: string
@@ -41,7 +43,7 @@ def make_request(request, url, params={}, timeout=None,
             raise NoContent(r.url, r.status_code, response=r)
 
         r.raise_for_status()
-        if r.status_code != 200:
+        if r.status_code not in success_codes:
             raise ClientError(r.status_code, response=r)
 
         return r.content
