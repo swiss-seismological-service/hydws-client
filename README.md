@@ -611,3 +611,75 @@ easting, northing, altitude = transformer.to_local_coords(lon=8.5, lat=47.4)
 # Convert back to WGS84
 lon, lat, alt = transformer.from_local_coords(easting, northing)
 ```
+
+### Raw Data Parser
+
+The `RawHydraulicsParser` transforms raw sensor data from pandas DataFrames into HYDWS JSON format. It's useful for ingesting data from various monitoring systems and mapping sensor columns to the correct borehole sections.
+
+```python
+from hydws.parser.rawparser import RawHydraulicsParser
+import json
+
+# Load borehole metadata (from HYDWS API or file)
+with open('boreholes.json') as f:
+    boreholes_metadata = json.load(f)
+
+# Initialize parser with config and metadata
+parser = RawHydraulicsParser('config.json', boreholes_metadata)
+
+# Parse a DataFrame with sensor data (datetime index required)
+hydws_data = parser.parse(dataframe, format='json')  # Returns list of borehole dicts
+```
+
+#### Config File Structure
+
+The config file is a JSON array defining how to map DataFrame columns to HYDWS fields:
+
+```json
+[
+    {
+        "columnNames": ["sensor_pressure_1", "sensor_pressure_2"],
+        "fieldName": "toppressure",
+        "unitConversion": ["mul", 1000000],
+        "sensorPosition": "downhole",
+        "assignTo": "sectionID",
+        "section": "ST1_section_01"
+    }
+]
+```
+
+**Config fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `columnNames` | Yes | Input DataFrame columns (summed if multiple) |
+| `fieldName` | Yes | Target field: `toppressure`, `topflow`, `toptemperature`, `bottompressure`, `bottomflow`, `bottomtemperature`, `fluiddensity`, `fluidviscosity`, `fluidph` |
+| `assignTo` | Yes | `"sectionID"` (direct) or `"plan"` (time-based CSV) |
+| `section` | Yes | Section name or path to plan CSV |
+| `unitConversion` | No | `[operation, value]` e.g., `["mul", 1e6]`, `["div", 60]` |
+| `sensorPosition` | No | `"surface"` or `"downhole"` (affects pressure correction) |
+| `conditions` | No | Conditional column selection rules |
+
+#### Time-Based Assignment (Plan Mode)
+
+For scenarios where data should be routed to different sections based on time (e.g., injection experiments), use a plan CSV:
+
+```json
+{
+    "columnNames": ["injection_pressure"],
+    "fieldName": "toppressure",
+    "assignTo": "plan",
+    "section": "injection_plan.csv"
+}
+```
+
+**Plan CSV format:**
+```csv
+interval, date_from, date_until
+ST1_section_11, 2024/04/15T00:00:00, 2024/04/20T23:59:59
+ST1_section_12, 2024/04/21T00:00:00, 2024/04/25T23:59:59
+```
+
+#### Surface Pressure Correction
+
+When `sensorPosition: "surface"` is set for pressure fields, the parser automatically adds hydrostatic pressure to correct for the water column height between the surface and the section depth.
