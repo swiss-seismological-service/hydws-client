@@ -163,7 +163,7 @@ class SectionHydraulics:
         else:
             if resample is not None:
                 hydraulics = self.hydraulics.resample(
-                    f'{resample}S').mean().interpolate('time')
+                    f'{resample}s').mean().interpolate('time')
             else:
                 # copy when not resampling
                 hydraulics = self.hydraulics.copy()
