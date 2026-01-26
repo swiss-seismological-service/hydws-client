@@ -32,6 +32,9 @@ from hydws.parser import BoreholeHydraulics, SectionHydraulics
 ```python
 hydws_url = 'http://example.api.com/hydws/v1'
 hydws = HYDWSDataSource(hydws_url)
+
+# Or with a custom timeout (in seconds)
+hydws = HYDWSDataSource(hydws_url, timeout=30)
 ```
 
 Assuming you know exactly what you want, you can use the following methods to get the data you need. 
@@ -150,6 +153,16 @@ section = SectionHydraulics(section_json)
 
 section.metadata # to access the metadata of the section
 section.hydraulics # to access the hydraulic data as a dataframe
+```
+
+To filter the data to a narrower time range without another API call:
+
+```python
+filtered = section.query_datetime(
+    starttime=datetime(2024, 4, 6, 1, 0, 30),
+    endtime=datetime(2024, 4, 6, 1, 0, 45)
+)
+filtered.hydraulics  # returns a new SectionHydraulics with filtered data
 ```
 
 
@@ -271,6 +284,12 @@ section = borehole.nloc[section_name] # use the section name as a key to access 
 section.hydraulics
 ```
 
+You can also filter all sections in a borehole at once:
+
+```python
+filtered_borehole = borehole.query_datetime(starttime=start, endtime=end)
+```
+
 
 
 
@@ -363,6 +382,71 @@ section.hydraulics
 </div>
 
 
+### Exporting Data
+
+To convert your data back to HYDWS JSON format (e.g., for saving or uploading):
+
+```python
+# Export section with all hydraulic samples
+section_json = section.to_json()
+
+# Export with resampled data (every 60 seconds)
+section_json_resampled = section.to_json(resample=60)
+
+# Export entire borehole with all sections
+borehole_json = borehole.to_json()
+```
+
+### Creating Data Programmatically
+
+You can create hydraulic data from your own DataFrames or JSON.
+
+**Valid column names for hydraulic DataFrames:**
+- Flow/Pressure/Temperature: `topflow`, `toppressure`, `toptemperature`, `bottomflow`, `bottompressure`, `bottomtemperature`
+- Fluid properties: `fluiddensity`, `fluidviscosity`, `fluidph`, `fluidcomposition`
+
+```python
+import pandas as pd
+from hydws.parser import BoreholeHydraulics, SectionHydraulics
+
+# Create an empty borehole
+borehole = BoreholeHydraulics()
+borehole.metadata['name'] = 'My Borehole'
+
+# Option 1: Add a section from a DataFrame
+df = pd.DataFrame({
+    'topflow': [1.2e-6, 1.3e-6],
+    'toppressure': [4.1e6, 4.2e6]
+}, index=pd.to_datetime(['2024-01-01 00:00', '2024-01-01 00:01']))
+df.index.name = 'datetime'
+
+section_id = borehole.section_from_dataframe(df)
+
+# Option 2: Add a section from JSON (e.g., from a file or API response)
+section_json = {'publicid': '...', 'name': 'Section 1', 'hydraulics': [...], ...}
+section_id = borehole.section_from_json(section_json)
+
+# Option 3: Add an empty section and populate it later
+section_id = borehole.add_empty_section()
+borehole[section_id].metadata['name'] = 'New Section'
+borehole[section_id].hydraulics = df
+```
+
+You can also work directly with `SectionHydraulics`:
+
+```python
+section = SectionHydraulics()
+
+# Load hydraulic data from JSON (list of samples)
+hydraulic_samples = [
+    {'datetime': {'value': '2024-01-01T00:00:00'}, 'topflow': {'value': 1.2e-6}},
+    {'datetime': {'value': '2024-01-01T00:01:00'}, 'topflow': {'value': 1.3e-6}}
+]
+section.load_hydraulic_json(hydraulic_samples)
+
+# Export to JSON
+section_json = section.to_json()
+```
 
 ### Navigating Boreholes, Sections and Metadata
 
@@ -432,4 +516,19 @@ section_metadata
 
 
 
+### Coordinate Transformations
 
+When working with local coordinate systems (e.g., Swiss LV95, UTM zones), you can convert between WGS84 (lat/lon) and local coordinates:
+
+```python
+from hydws.coordinates import CoordinateTransformer
+
+# Initialize with target CRS (e.g., Swiss LV95)
+transformer = CoordinateTransformer('EPSG:2056')
+
+# Convert WGS84 to local coordinates
+easting, northing, altitude = transformer.to_local_coords(lon=8.5, lat=47.4)
+
+# Convert back to WGS84
+lon, lat, alt = transformer.from_local_coords(easting, northing)
+```
