@@ -1,0 +1,419 @@
+{
+    "publicid": "29a3a2d8-b5d3-4dd6-bc12-0892874723fc",
+    "longitude": {
+        "value": 8.47706629603003
+    },
+    "latitude": {
+        "value": 46.51113250987997
+    },
+    "altitude": {
+        "value": 1484.905
+    },
+    "bedrockaltitude": {},
+    "measureddepth": {
+        "value": 400
+    },
+    "name": "ST1",
+    "location": "Bedretto",
+    "institution": "BedrettoLab",
+    "sections": [
+        {
+            "publicid": "f4bfa3dd-d363-4d92-b294-80b69c165ba4",
+            "starttime": "2021-11-16T00:00:59",
+            "endtime": "2023-09-26T14:05:05",
+            "toplongitude": {
+                "value": 8.474846876910254
+            },
+            "toplatitude": {
+                "value": 46.50974283652441
+            },
+            "topaltitude": {
+                "value": 1226.0546570746667
+            },
+            "bottomlongitude": {
+                "value": 8.474740738993724
+            },
+            "bottomlatitude": {
+                "value": 46.50967769729231
+            },
+            "bottomaltitude": {
+                "value": 1211.3668080304928
+            },
+            "topmeasureddepth": {
+                "value": 346.59
+            },
+            "bottommeasureddepth": {
+                "value": 364.88
+            },
+            "holediameter": {
+                "value": 0.216
+            },
+            "casingdiameter": {
+                "value": 0.0893
+            },
+            "topclosed": true,
+            "bottomclosed": true,
+            "name": "ST1_section_03",
+            "hydraulics": []
+        },
+        {
+            "publicid": "c0c71ae8-e37a-4ad1-9e91-0407cf0792b1",
+            "starttime": "2020-11-24T13:00:29",
+            "endtime": "2020-11-24T13:28:29",
+            "toplongitude": {
+                "value": 8.47473203423232
+            },
+            "toplatitude": {
+                "value": 46.50967234897535
+            },
+            "topaltitude": {
+                "value": 1210.1501322748682
+            },
+            "bottomlongitude": {
+                "value": 8.47468833805559
+            },
+            "bottomlatitude": {
+                "value": 46.50964538043515
+            },
+            "bottomaltitude": {
+                "value": 1204.076431828354
+            },
+            "topmeasureddepth": {
+                "value": 366.39
+            },
+            "bottommeasureddepth": {
+                "value": 373.92
+            },
+            "holediameter": {
+                "value": 0.216
+            },
+            "casingdiameter": {
+                "value": 0.0893
+            },
+            "topclosed": true,
+            "bottomclosed": true,
+            "name": "ST1_section_02",
+            "hydraulics": [
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:00:29"
+                    },
+                    "topflow": {
+                        "value": 1.1954183333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4174730.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:01:29"
+                    },
+                    "topflow": {
+                        "value": 1.1697566666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4171650.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:02:29"
+                    },
+                    "topflow": {
+                        "value": 1.1883725e-06
+                    },
+                    "toppressure": {
+                        "value": 4167040.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:03:30"
+                    },
+                    "topflow": {
+                        "value": 1.1954183333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4161650.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:04:29"
+                    },
+                    "topflow": {
+                        "value": 1.1911908333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4157040.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:05:29"
+                    },
+                    "topflow": {
+                        "value": 1.1897816666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4153960.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:06:30"
+                    },
+                    "topflow": {
+                        "value": 1.1869633333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4150110.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:07:29"
+                    },
+                    "topflow": {
+                        "value": 1.1954183333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4145490.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:08:29"
+                    },
+                    "topflow": {
+                        "value": 1.1982366666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4141650.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:09:30"
+                    },
+                    "topflow": {
+                        "value": 1.1669383333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4137800.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:10:29"
+                    },
+                    "topflow": {
+                        "value": 1.1911908333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4133180.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:11:29"
+                    },
+                    "topflow": {
+                        "value": 1.1982366666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4129340.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:12:30"
+                    },
+                    "topflow": {
+                        "value": 1.1697566666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4126260.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:13:29"
+                    },
+                    "topflow": {
+                        "value": 1.1697566666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4121640.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:14:29"
+                    },
+                    "topflow": {
+                        "value": 1.1954183333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4117800.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:15:30"
+                    },
+                    "topflow": {
+                        "value": 1.1897816666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4113180.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:16:29"
+                    },
+                    "topflow": {
+                        "value": 1.1954183333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4108560.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:17:29"
+                    },
+                    "topflow": {
+                        "value": 1.1697566666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4105105.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:18:30"
+                    },
+                    "topflow": {
+                        "value": 1.1869633333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4101640.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:19:29"
+                    },
+                    "topflow": {
+                        "value": 1.1926e-06
+                    },
+                    "toppressure": {
+                        "value": 4097790.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:20:29"
+                    },
+                    "topflow": {
+                        "value": 1.1897816666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4093565.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:21:30"
+                    },
+                    "topflow": {
+                        "value": 1.1926e-06
+                    },
+                    "toppressure": {
+                        "value": 4088560.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:22:29"
+                    },
+                    "topflow": {
+                        "value": 1.1897816666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4085480.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:23:29"
+                    },
+                    "topflow": {
+                        "value": 1.1926e-06
+                    },
+                    "toppressure": {
+                        "value": 4081640.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:24:30"
+                    },
+                    "topflow": {
+                        "value": 1.1926e-06
+                    },
+                    "toppressure": {
+                        "value": 4077790.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:25:29"
+                    },
+                    "topflow": {
+                        "value": 1.1940091666637e-06
+                    },
+                    "toppressure": {
+                        "value": 4072400.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:26:29"
+                    },
+                    "topflow": {
+                        "value": 1.1926e-06
+                    },
+                    "toppressure": {
+                        "value": 4067790.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:27:30"
+                    },
+                    "topflow": {
+                        "value": 1.1954183333363e-06
+                    },
+                    "toppressure": {
+                        "value": 4064710.0
+                    }
+                },
+                {
+                    "datetime": {
+                        "value": "2020-11-24T13:28:29"
+                    },
+                    "topflow": {
+                        "value": 1.17836e-06
+                    },
+                    "toppressure": {
+                        "value": 4060090.0
+                    }
+                }
+            ]
+        }
+    ]
+}
