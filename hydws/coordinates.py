@@ -1,5 +1,3 @@
-from typing import Union
-
 import numpy as np
 from pyproj import Transformer
 
@@ -17,11 +15,11 @@ class CoordinateTransformer:
 
     def __init__(
             self,
-            local_proj: Union[int, str],
+            local_proj: int | str,
             ref_easting: float = 0.0,
             ref_northing: float = 0.0,
             ref_altitude: float = 0.0,
-            external_proj: Union[int, str] = 4326):
+            external_proj: int | str = 4326):
         """
         Constructor of CoordinateTransformer object.
 
@@ -43,9 +41,9 @@ class CoordinateTransformer:
             self.local_proj, self.external_proj, always_xy=True)
 
     def to_local_coords(self,
-                        lon: Union[float, list],
-                        lat: Union[float, list],
-                        altitude: Union[float, list] = None):
+                        lon: float | list,
+                        lat: float | list,
+                        altitude: float | list = None):
         """
         Transform geographic coordinates to local coordinates.
 
@@ -68,9 +66,9 @@ class CoordinateTransformer:
 
     def from_local_coords(
             self,
-            easting: Union[float, list],
-            northing: Union[float, list],
-            altitude: Union[float, list] = None):
+            easting: float | list,
+            northing: float | list,
+            altitude: float | list = None):
         """
         Transform local coordinates to geographic coordinates.
 

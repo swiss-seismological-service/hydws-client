@@ -48,7 +48,7 @@ def make_request(request, url, params={}, timeout=None,
 
         return r.content
 
-    except (NoContent, ClientError) as err:
-        raise err
+    except (NoContent, ClientError):
+        raise
     except requests.exceptions.RequestException as err:
         raise RequestsError(err, response=err.response)

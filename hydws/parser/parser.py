@@ -99,8 +99,9 @@ class SectionHydraulics:
 
         dataframe = pd.json_normalize(data, sep='_')
 
+        # Remove suffix after the last underscore (e.g., _value)
         dataframe.columns = dataframe.columns.str.replace(
-            "(_).*", "", regex=True)
+            r"_[^_]+$", "", regex=True)
 
         dataframe['datetime'] = pd.to_datetime(dataframe['datetime'])
         dataframe.set_index(['datetime'], inplace=True, drop=True)

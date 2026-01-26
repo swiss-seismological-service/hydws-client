@@ -84,8 +84,8 @@ class HYDWSDataSource:
         """
         Returns borehole and section metadata as a dict.
 
-        :param borehole_id: PublicID or name of the borehole.
-        :returns:           Borehole data as a dict.
+        :param borehole: PublicID or name of the borehole.
+        :returns:        Borehole data as a dict.
         """
 
         try:
@@ -106,10 +106,9 @@ class HYDWSDataSource:
         """
         Returns a list of all sections for a given borehole.
 
-        :param borehole_name: PublicID or name of the borehole.
-        :param identifier:    'name', 'publicid' or 'both'.
+        :param borehole: PublicID or name of the borehole.
 
-        :returns:             List of sections for the borehole.
+        :returns:        List of sections for the borehole.
         """
 
         borehole_metadata = self.get_borehole_metadata(borehole)
@@ -121,8 +120,9 @@ class HYDWSDataSource:
         """
         Returns a list of all section names and id's for a given borehole.
 
-        :param borehole_name: PublicID or name of the borehole.
-        :returns:             List of tuples with section name and id.
+        :param borehole:   PublicID or name of the borehole.
+        :param identifier: 'name', 'publicid' or 'both'.
+        :returns:          List of tuples with section name and id.
         """
 
         borehole_metadata = self.get_borehole_metadata(borehole)
@@ -165,9 +165,9 @@ class HYDWSDataSource:
         """
         Returns borehole with all the sections and associated hydraulic data.
 
-        :param borehole_id: PublicID or name of the borehole.
-        :param starttime:   Datetime from when on the data should be retrieved.
-        :param endtime:     Datetime until when the data should be retrieved.
+        :param borehole:  PublicID or name of the borehole.
+        :param starttime: Datetime from when on the data should be retrieved.
+        :param endtime:   Datetime until when the data should be retrieved.
 
         :returns: Borehole and section metadata as well as section hydraulics.
         """
@@ -191,10 +191,10 @@ class HYDWSDataSource:
         """
         Returns Section data including hydraulics.
 
-        :param borehole_id: PublicID or name of the borehole.
-        :param section_id:  PublicID or name of the section.
-        :param starttime:   Datetime from when on the data should be retrieved.
-        :param endtime:     Datetime until when the data should be retrieved.
+        :param borehole:  PublicID or name of the borehole.
+        :param section:   PublicID or name of the section.
+        :param starttime: Datetime from when on the data should be retrieved.
+        :param endtime:   Datetime until when the data should be retrieved.
 
         :returns: Section metadata as well as section hydraulics.
         """
@@ -472,8 +472,7 @@ class HYDWSDataSource:
             return {} if parse_json else ''
         except RequestsError as err:
             self.logger.error(f"Request Error while fetching data ({err}).")
-        except BaseException as err:
-            self.logger.error(f"Error while fetching data {err}")
+            raise
         else:
             self.logger.info('HYDWS data received.')
             if parse_json:

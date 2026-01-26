@@ -40,7 +40,6 @@ dev = [
     "pytest",
     "isort",
     "pytest-cov",
-    "tox",
     "flake8",
     "responses",
 ]
