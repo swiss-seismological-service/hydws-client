@@ -318,6 +318,45 @@ class TestWriteOperations:
         assert "Would be deleted" in captured.out
 
     @responses.activate
+    def test_delete_section(self, metadata_json):
+        """Test DELETE section."""
+        borehole_id = metadata_json[0]['publicid']
+        section_id = "c0c71ae8-e37a-4ad1-9e91-0407cf0792b1"
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+        responses.add(
+            responses.DELETE,
+            f"{BASE_URL}/boreholes/{borehole_id}/sections/{section_id}",
+            status=204)
+
+        client = HYDWSDataSource(BASE_URL, api_key='test-key')
+        client.delete_section("ST1", "ST1_section_02")
+
+        delete_request = responses.calls[1].request
+        assert delete_request.headers['x-api-key'] == 'test-key'
+
+    @responses.activate
+    def test_delete_section_test_mode(self, metadata_json, capsys):
+        """Test DELETE section in test mode."""
+        borehole_id = metadata_json[0]['publicid']
+        section_id = "c0c71ae8-e37a-4ad1-9e91-0407cf0792b1"
+        section_data = {'name': 'ST1_section_02', 'hydraulics': [1, 2, 3]}
+        responses.add(
+            responses.GET, f"{BASE_URL}/boreholes", json=metadata_json)
+        responses.add(
+            responses.GET,
+            f"{BASE_URL}/boreholes/{borehole_id}/sections/{section_id}",
+            json=section_data)
+
+        client = HYDWSDataSource(BASE_URL)
+        client.delete_section("ST1", "ST1_section_02", test=True)
+
+        assert len(responses.calls) == 2  # Init GET + check GET, no DELETE
+        captured = capsys.readouterr()
+        assert "Section: ST1_section_02" in captured.out
+        assert "Would be deleted" in captured.out
+
+    @responses.activate
     def test_delete_section_hydraulics(self, metadata_json):
         """Test DELETE section hydraulics with time params."""
         borehole_id = metadata_json[0]['publicid']

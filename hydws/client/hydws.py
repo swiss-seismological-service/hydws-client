@@ -358,6 +358,53 @@ class HYDWSDataSource:
                     response=err.response)
             raise
 
+    def delete_section(self, borehole: str, section: str,
+                       test: bool = False) -> None:
+        """
+        Delete a section and its hydraulic data.
+
+        :param borehole: PublicID or name of the borehole
+        :param section:  PublicID or name of the section
+        :param test:     If True, check existence and print info
+        """
+        borehole_id = self._get_borehole_id(borehole)
+        section_id = self._get_section_id(borehole_id, section)
+
+        url = f'{self.url}/boreholes/{borehole_id}/sections/{section_id}'
+
+        if test:
+            response = make_request(requests.get,
+                                    url,
+                                    {},
+                                    self._timeout,
+                                    nocontent_codes=(404,),
+                                    success_codes=(200,))
+            section_data = json.loads(response)
+            name = section_data.get('name', 'Unnamed')
+            hydraulics = section_data.get('hydraulics', [])
+            print(f"Section: {name}")
+            print(f"Hydraulic samples: {len(hydraulics)}")
+            print("Would be deleted.")
+            return
+
+        headers = {'x-api-key': self._api_key} if self._api_key else {}
+
+        try:
+            make_request(requests.delete,
+                         url,
+                         {},
+                         self._timeout,
+                         nocontent_codes=(),
+                         success_codes=(200, 204),
+                         headers=headers)
+        except ClientError as err:
+            if err.response.status_code == 401 and not self._api_key:
+                raise ClientError(
+                    "Authentication failed (401). "
+                    "Consider providing api_key parameter.",
+                    response=err.response)
+            raise
+
     def delete_section_hydraulics(self, borehole: str, section: str,
                                   starttime: datetime = None,
                                   endtime: datetime = None,
