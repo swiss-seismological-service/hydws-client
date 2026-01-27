@@ -62,7 +62,7 @@ class TestInit:
         config_path = make_config_file(config, tmp_path)
         parser = RawHydraulicsParser(config_path, borehole_metadata)
 
-        assert 'ST1_section_02' in parser.sections_map
+        assert 'ST1_section_02' in parser.borehole_by_section_name
         assert parser.name_map['ST1_section_02'] == SECTION_02_ID
         assert parser.config[0]['fieldName'] == 'toppressure'
 
@@ -72,7 +72,7 @@ class TestInit:
         metadata = [{'publicid': 'test-id', 'name': 'Test'}]
         parser = RawHydraulicsParser(config_path, metadata)
 
-        assert len(parser.sections_map) == 0
+        assert len(parser.borehole_by_section_name) == 0
 
 
 class TestParse:

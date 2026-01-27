@@ -1,10 +1,18 @@
 import json
 import logging
-from copy import deepcopy
 
 import pandas as pd
 
 from hydws.parser import BoreholeHydraulics
+
+# Water density at 20°C in kg/m³
+WATER_DENSITY_KG_M3 = 998.2
+
+# Gravitational acceleration in m/s²
+GRAVITY_M_S2 = 9.81
+
+# Allowed operations for unit conversion
+ALLOWED_UNIT_OPERATIONS = {'mul', 'truediv', 'add', 'sub'}
 
 
 class RawHydraulicsParser:
@@ -16,8 +24,7 @@ class RawHydraulicsParser:
         This class Parses data from a dataframe to HYDWS format. Uses
         transformations and mappings which are defined in a config file.
 
-        :param config_path: Path to config file. If not provided it looks for
-                            'CONFIG_PATH' environment variable.
+        :param config_path: Path to JSON config file defining column mappings.
         :param boreholes_metadata: List of dictionaries with borehole metadata.
         """
         self.logger = logging.getLogger(__name__)
@@ -25,7 +32,7 @@ class RawHydraulicsParser:
         with open(config_path) as f:
             self.config = json.load(f)
 
-        self.sections_map = {}
+        self.borehole_by_section_name = {}
         self.name_map = {}
         self.assign_to = {'plan': self._assign_to_plan,
                           'sectionID': self._assign_to_section}
@@ -34,7 +41,7 @@ class RawHydraulicsParser:
             if 'sections' in borehole:
                 for s in borehole['sections']:
                     self.name_map[s['name']] = s['publicid']
-                    self.sections_map[s['name']] = borehole
+                    self.borehole_by_section_name[s['name']] = borehole
 
     def parse(self, data: pd.DataFrame, format='json') -> list | dict:
         """
@@ -79,11 +86,21 @@ class RawHydraulicsParser:
         else:
             raise KeyError('Return format unknown.')
 
-    def _apply_conditions(self, col_config, df):
+    def _apply_conditions(self, col_config: dict, df: pd.DataFrame):
+        """
+        Selects values from columns based on conditional rules.
 
-        results_column = df[df.columns.intersection(
-            [col_config['columnNames'][0]])].sum(axis=1)
-        results_column.values[:] = 0
+        Iterates through conditions and uses mask() to selectively replace
+        values in the result. Supports rules:
+        - 'above': use value if it exceeds threshold
+        - 'below': use value if it is below threshold
+        - 'above-current': use value if (value - current) > threshold
+        - 'below-current': use value if (current - value) > threshold
+
+        This is useful for selecting between redundant sensors based on
+        which one has valid/preferred readings.
+        """
+        results_column = pd.Series(0.0, index=df.index)
 
         for condition in col_config['conditions']:
 
@@ -104,8 +121,9 @@ class RawHydraulicsParser:
                 logic = (results_column
                          - condition_column) > condition['value']
             else:
-                self.logger.error('Condition rule unknown.')
-                raise ValueError
+                raise ValueError(
+                    f"Unknown condition rule: {condition['rule']}. "
+                    f"Allowed: above, below, above-current, below-current")
 
             results_column.mask(
                 logic, condition_column, inplace=True)
@@ -117,24 +135,26 @@ class RawHydraulicsParser:
         with open(col_config['section'], 'r') as f:
             plan = pd.read_csv(f, sep=',', skipinitialspace=True)
 
-        config = deepcopy(col_config)
+        plan['date_from'] = pd.to_datetime(
+            plan['date_from'], format='%Y/%m/%dT%H:%M:%S')
+        plan['date_until'] = pd.to_datetime(
+            plan['date_until'], format='%Y/%m/%dT%H:%M:%S')
 
-        plan[['date_from', 'date_until']] = \
-            plan[['date_from', 'date_until']].apply(
-            pd.to_datetime, format='%Y/%m/%dT%H:%M:%S')
-
-        for row in plan.iterrows():
-            period = column.sort_index()[
-                row[1]['date_from']:row[1]['date_until']]
+        for row in plan.itertuples():
+            period = column.sort_index()[row.date_from:row.date_until]
             if not period.empty:
-                config['section'] = row[1]['interval']
                 self._assign_to_section(
-                    boreholes, config, period)
+                    boreholes, col_config, period,
+                    section_override=row.interval)
 
     def _assign_to_section(
-            self, boreholes: dict, col_config: dict, column: pd.DataFrame):
+            self, boreholes: dict, col_config: dict, column: pd.DataFrame,
+            section_override: str | None = None):
 
-        borehole_data = self.sections_map[col_config['section']]
+        section_name = section_override or col_config['section']
+        borehole_data = self.borehole_by_section_name[section_name]
+        borehole_id = borehole_data['publicid']
+        section_id = self.name_map[section_name]
 
         if 'unitConversion' in col_config:
             column = self._convert_unit(
@@ -142,47 +162,49 @@ class RawHydraulicsParser:
                 col_config['unitConversion'][0],
                 col_config['unitConversion'][1])
 
-        if 'sensorPosition' in col_config and 'pressure' in column.columns[0]:
-            if col_config['sensorPosition'] == 'surface':
-                column = self._convert_to_surface_measurement(
-                    column, col_config['section'], borehole_data)
+        if (col_config.get('sensorPosition') == 'surface'
+                and 'pressure' in column.columns[0]):
+            column = self._convert_to_surface_measurement(
+                column, section_name, borehole_data)
 
-        if not borehole_data['publicid'] in boreholes:
-            boreholes[borehole_data['publicid']
-                      ] = BoreholeHydraulics(borehole_data)
+        if borehole_id not in boreholes:
+            boreholes[borehole_id] = BoreholeHydraulics(borehole_data)
 
         # add hydraulic data to parser
-        boreholes[borehole_data['publicid']
-                  ][self.name_map[col_config['section']]].hydraulics = \
-            pd.concat([
-                boreholes[borehole_data['publicid']
-                          ][self.name_map[col_config['section']]
-                            ].hydraulics, column],
-                      axis=1)
+        section = boreholes[borehole_id][section_id]
+        section.hydraulics = pd.concat([section.hydraulics, column], axis=1)
 
     def _convert_unit(self, column: pd.DataFrame, operation: str, num: float):
+        if operation not in ALLOWED_UNIT_OPERATIONS:
+            raise ValueError(
+                f"Unknown unit conversion operation: {operation}. "
+                f"Allowed: {ALLOWED_UNIT_OPERATIONS}")
         return getattr(column, operation)(num)
 
     def _convert_to_surface_measurement(
-            self, column: pd.DataFrame, section_id: str, borehole_data: dict):
+            self, column: pd.DataFrame, section_name: str,
+            borehole_data: dict):
         """
         Takes into account that pressure measurement was done on the surface.
 
         Adds the pressure of the water column to the measured values of
         toppressure and bottompressure.
 
-        :param section_id: section for which pressure was measured at surface
-        :param unit_factor: factor of the desired unit (eg 10^6 for MPa)
+        :param section_name: section for which pressure was measured at surface
+        :param borehole_data: borehole metadata containing section info
         """
         # get correct section info
         sec_info = next(
             (item for item in borehole_data['sections']
-                if item['name'] == section_id), {})
+                if item['name'] == section_name), None)
+
+        if sec_info is None:
+            raise ValueError(f"Section '{section_name}' not found in borehole")
 
         abs_depth = borehole_data['altitude']['value'] - \
-            (sec_info['bottomaltitude']['value'])
+            sec_info['bottomaltitude']['value']
 
-        # calculate hydraulic pressure
-        hydraulic_pressure = 998.2 * abs_depth * 9.81
+        # calculate hydraulic pressure (P = ρgh)
+        hydraulic_pressure = WATER_DENSITY_KG_M3 * GRAVITY_M_S2 * abs_depth
 
         return column + hydraulic_pressure

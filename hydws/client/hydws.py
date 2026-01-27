@@ -246,7 +246,7 @@ class HYDWSDataSource:
         if format == 'pandas':
             csv_data = self._make_api_request(
                 request_url, params, parse_json=False)
-            if not csv_data:
+            if not csv_data or not csv_data.strip():
                 return pd.DataFrame()
             df = pd.read_csv(
                 io.StringIO(csv_data), parse_dates=['datetime_value'])
